@@ -1,0 +1,13 @@
+pandas
+numpy
+openpyxl
+matplotlib
+seaborn
+plotly
+missingno
+scikit-learn
+scipy
+requests
+flask
+flask-cors
+utils
