@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Bem-vindo ao Qualidade do Ar</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 600px;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            text-shadow: 0 0 8px rgba(255,255,255,0.3);
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        .btn, input[type="submit"] {
+            display: inline-block;
+            margin: 10px;
+            padding: 14px 28px;
+            font-size: 1.1rem;
+            color: #2c3e50;
+            background-color: #ffdd59;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: #ffd700;
+            transform: scale(1.05);
+        }
+
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            padding-top: 100px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            color: #000;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 10px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Bem-vindo ao Portal de Qualidade do Ar</h1>
+        <p>Explore os dados ambientais, visualize análises interativas e descubra insights sobre a poluição do ar ao redor do mundo.</p>
+
+        <form method="POST" action="/upload_csv" enctype="multipart/form-data">
+            <input type="file" name="csv_file" accept=".csv" required><br>
+            <input type="submit" value="📤 Enviar CSV e Continuar">
+        </form>
+
+        <button class="btn" onclick="mostrarModal()">❗ Aviso sobre o CSV</button>
+        <a href="/dashboard" class="btn">Ir para o Dashboard</a>
+        
+    </div>
+
+    <!-- Modal -->
+    <div id="colunasModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModal()">&times;</span>
+            <h2>Aviso Importante</h2>
+            <p>⚠️ Para que o sistema funcione corretamente, seu CSV deve conter as seguintes colunas:</p>
+            <ul>
+                <li>Country Code</li>
+                <li>City</li>
+                <li>Location</li>
+                <li>Coordinates</li>
+                <li>Pollutant</li>
+                <li>Source Name</li>
+                <li>Unit</li>
+                <li>Value</li>
+                <li>Last Updated</li>
+                <li>Country Label</li>
+            </ul>
+            <p>❗Se alguma dessas estiver ausente, o sistema pode não funcionar corretamente.</p>
+        </div>
+    </div>
+
+    <!-- Mostrar alerta após upload -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <script>
+          window.onload = function() {
+            {% for category, message in messages %}
+              alert("{{ message }}");
+            {% endfor %}
+          };
+        </script>
+      {% endif %}
+    {% endwith %}
+
+    <script>
+        function mostrarModal() {
+            document.getElementById('colunasModal').style.display = 'block';
+        }
+
+        function fecharModal() {
+            document.getElementById('colunasModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('colunasModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
+
+</body>
+</html>

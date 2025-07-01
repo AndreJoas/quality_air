@@ -1,0 +1,167 @@
+/* Reset básico */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+/* Fonte e cor base */
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f7f9fc;
+    color: #222;
+    padding: 20px;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+
+/* Container principal */
+
+h1 {
+    color: #1a73e8;
+    margin-bottom: 24px;
+    font-weight: 700;
+    text-align: center;
+}
+
+
+/* Navegação links */
+
+nav {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+nav a {
+    text-decoration: none;
+    color: #1a73e8;
+    font-weight: 600;
+    margin: 0 12px;
+    transition: color 0.3s ease;
+}
+
+nav a:hover,
+nav a:focus {
+    color: #155ab6;
+}
+
+
+/* Filtros container */
+
+#filtros {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px 24px;
+    box-shadow: 0 3px 10px rgb(0 0 0 / 0.1);
+    max-width: 960px;
+    margin: 0 auto 40px auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+}
+
+
+/* Selects e inputs */
+
+#filtros select,
+#filtros input[type="number"] {
+    padding: 10px 12px;
+    border: 1.8px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    min-width: 160px;
+    transition: border-color 0.3s ease;
+}
+
+#filtros select:focus,
+#filtros input[type="number"]:focus {
+    border-color: #1a73e8;
+    outline: none;
+}
+
+
+/* Botão */
+
+#filtros button {
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    padding: 11px 24px;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    min-width: 130px;
+    font-weight: 600;
+}
+
+#filtros button:hover,
+#filtros button:focus {
+    background-color: #155ab6;
+    outline: none;
+}
+
+
+/* Área dos gráficos */
+
+#graficos {
+    max-width: 960px;
+    margin: 0 auto 40px auto;
+}
+
+#graficos>div {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 40px;
+    box-shadow: 0 2px 12px rgb(0 0 0 / 0.1);
+    min-height: 350px;
+}
+
+
+/* Resultados analises */
+
+#resultado-analise {
+    max-width: 960px;
+    margin: 0 auto;
+    background: white;
+    padding: 25px 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgb(0 0 0 / 0.1);
+    font-size: 1.05rem;
+    line-height: 1.5;
+}
+
+#resultado-analise h3 {
+    color: #1a73e8;
+    margin-bottom: 12px;
+    font-weight: 700;
+}
+
+#resultado-analise p {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+
+/* Responsividade */
+
+@media (max-width: 768px) {
+    #filtros {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #filtros select,
+    #filtros input[type="number"],
+    #filtros button {
+        min-width: 100%;
+    }
+    #graficos>div {
+        min-height: 280px;
+    }
+}
