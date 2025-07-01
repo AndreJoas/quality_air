@@ -5,7 +5,6 @@
     <meta charset="UTF-8" />
     <title>Dashboard Qualidade do Ar</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-
     <style>
         /* Reset básico */
         
@@ -45,7 +44,6 @@
             color: #ffd700;
             text-shadow: 0 0 8px #ffd700aa;
         }
-        /* Container flex para filtros + info */
         
         #filtros-info-container {
             display: flex;
@@ -54,7 +52,6 @@
             gap: 40px;
             margin-bottom: 40px;
         }
-        /* Filtros */
         
         #filtros {
             background: rgba(255, 255, 255, 0.1);
@@ -110,7 +107,6 @@
             background: #ffd700;
             transform: scale(1.05);
         }
-        /* Caixa de informação ao lado */
         
         #info-poluentes {
             flex: 1;
@@ -129,15 +125,15 @@
             margin-top: 0;
             margin-bottom: 15px;
         }
-        /* Carrossel - container externo */
         
         #graficos-container {
-            width: 100%;
-            max-width: 980px;
+            width: 82%;
+            max-width: 82%;
             position: relative;
             margin-bottom: 50px;
+            display: flex;
+            justify-content: center;
         }
-        /* Botões de navegação */
         
         .btn-carousel {
             position: absolute;
@@ -171,7 +167,6 @@
         #btn-right {
             right: -50px;
         }
-        /* Container com scroll horizontal e espaçamento entre gráficos */
         
         #graficos {
             display: flex;
@@ -180,28 +175,26 @@
             gap: 40px;
             padding-bottom: 10px;
         }
-        /* Oculta barra de rolagem para Webkit */
         
         #graficos::-webkit-scrollbar {
             display: none;
         }
-        /* Para Firefox */
         
         #graficos {
             scrollbar-width: none;
             -ms-overflow-style: none;
         }
-        /* Cada gráfico é um card */
         
         #graficos>div {
-            flex: 0 0 1000px;
+            flex: 0 0 920px;
+            min-width: 80vw;
+            max-width: 100%;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
             padding: 15px;
             min-height: 400px;
         }
-        /* Texto da análise */
         
         #resultado-analise {
             background: rgba(255, 255, 255, 0.12);
@@ -232,13 +225,10 @@
 </head>
 
 <body>
-
     <h1>Dashboard Qualidade do Ar</h1>
     <p><a href="/teste_t_rota">Ir para página do Teste T</a></p>
 
     <div id="filtros-info-container">
-
-        <!-- Filtros -->
         <div id="filtros">
             <select id="pais-select">
                 <option value="">Todos os Países</option>
@@ -260,20 +250,19 @@
             <button onclick="atualizarDashboard()">Atualizar</button>
         </div>
 
-        <!-- Texto Explicativo -->
         <div id="info-poluentes">
             <h2>Informações sobre Poluentes e Medidas</h2>
-            <p><strong>PM10</strong>: Partículas inaláveis até 10 micrômetros<br>Unidade: µg/m³ (microgramas por metro cúbico)</p>
+            <p><strong>PM10</strong>: Partículas inaláveis até 10 micrômetros<br>Unidade: µg/m³</p>
             <p><strong>PM2.5</strong>: Partículas finas até 2.5 micrômetros<br>Unidade: µg/m³</p>
             <p><strong>PM1</strong>: Partículas ultrafinas até 1 micrômetro<br>Unidade: µg/m³</p>
-            <p><strong>NO</strong>: Monóxido de nitrogênio<br>Unidade: ppm (partes por milhão) ou µg/m³</p>
+            <p><strong>NO</strong>: Monóxido de nitrogênio<br>Unidade: ppm ou µg/m³</p>
             <p><strong>NO2</strong>: Dióxido de nitrogênio<br>Unidade: ppm ou µg/m³</p>
-            <p><strong>NOX</strong>: Óxidos de nitrogênio (NO + NO2 + outros)<br>Unidade: ppm</p>
+            <p><strong>NOX</strong>: Óxidos de nitrogênio<br>Unidade: ppm</p>
             <p><strong>O3</strong>: Ozônio<br>Unidade: ppm</p>
             <p><strong>CO</strong>: Monóxido de carbono<br>Unidade: ppm</p>
             <p><strong>SO2</strong>: Dióxido de enxofre<br>Unidade: ppm</p>
-            <p><strong>BC</strong>: Black Carbon (carbono negro, fuligem)<br>Unidade: µg/m³</p>
-            <p><strong>TEMPERATURA</strong>: Temperatura do ar<br>Unidade: °C ou °F (depende da unidade selecionada)</p>
+            <p><strong>BC</strong>: Black Carbon<br>Unidade: µg/m³</p>
+            <p><strong>TEMPERATURA</strong>: Temperatura do ar<br>Unidade: °C ou °F</p>
         </div>
     </div>
 
@@ -364,14 +353,16 @@
                     color: 'steelblue'
                 }
             };
-            Plotly.newPlot('graf-histograma', [traceHist], {
+            Plotly.react('graf-histograma', [traceHist], {
                 title: 'Níveis por Cidade',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 paper_bgcolor: 'rgba(0,0,0,0)',
+                responsive: true,
                 font: {
                     color: '#f1f1f1'
                 }
             });
+
 
             // Boxplot dos valores
             const traceBox = {
@@ -380,14 +371,16 @@
                 boxpoints: 'outliers',
                 name: 'Distribuição de Valores'
             };
-            Plotly.newPlot('graf-boxplot', [traceBox], {
+            Plotly.react('graf-boxplot', [traceBox], {
                 title: 'Boxplot de Valores',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 paper_bgcolor: 'rgba(0,0,0,0)',
+                responsive: true,
                 font: {
                     color: '#f1f1f1'
                 }
             });
+
 
             // Gráfico de Pareto (valores ordenados + linha acumulada)
             const valoresOrdenados = dados.map(d => d.Value).slice().sort((a, b) => b - a);
@@ -451,7 +444,8 @@
                 }
             };
 
-            Plotly.newPlot('graf-pareto', [traceBarPareto, traceLinePareto], layoutPareto);
+            Plotly.react('graf-pareto', [traceBarPareto, traceLinePareto], layoutPareto);
+
 
             // Scatter simples
             const traceScatter = {
@@ -464,10 +458,11 @@
                     color: 'lightgreen'
                 }
             };
-            Plotly.newPlot('graf-scatter', [traceScatter], {
+            Plotly.react('graf-scatter', [traceScatter], {
                 title: 'Dispersão por Cidade',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 paper_bgcolor: 'rgba(0,0,0,0)',
+                responsive: true,
                 font: {
                     color: '#f1f1f1'
                 }
@@ -504,11 +499,12 @@
                     },
                     plot_bgcolor: 'rgba(0,0,0,0)',
                     paper_bgcolor: 'rgba(0,0,0,0)',
+                    responsive: true,
                     font: {
                         color: '#f1f1f1'
                     }
                 };
-                Plotly.newPlot('graf-mapa', [traceMapa], layoutMapa);
+                Plotly.react('graf-mapa', [traceMapa], layoutMapa);
             } else {
                 document.getElementById('graf-mapa').innerHTML = '<p>Sem dados geográficos para mapa</p>';
             }
@@ -516,17 +512,24 @@
             // Análise descritiva
             const analise = await fetchJSON(`/analise_descritiva?pais=${encodeURIComponent(pais)}&poluente=${encodeURIComponent(poluente)}`);
             document.getElementById('stats').textContent = `
-                Média: ${analise.media.toFixed(2)},
-                Mediana: ${analise.mediana.toFixed(2)},
-                Desvio padrão: ${analise.std.toFixed(2)},
-                Máximo: ${analise.max.toFixed(2)},
-                Mínimo: ${analise.min.toFixed(2)},
-                Registros: ${analise.count}
-            `;
+                    Média: ${analise.media.toFixed(2)},
+                    Mediana: ${analise.mediana.toFixed(2)},
+                    Desvio padrão: ${analise.std.toFixed(2)},
+                    Máximo: ${analise.max.toFixed(2)},
+                    Mínimo: ${analise.min.toFixed(2)},
+                    Registros: ${analise.count}
+                `;
 
-            // Probabilidade ultrapassar limite
-            const prob = await fetchJSON(`/probabilidade?poluente=${encodeURIComponent(poluente)}&limite=${limiteProb}`);
-            document.getElementById('prob').textContent = `Probabilidade de ultrapassar ${limiteProb}: ${(prob.probabilidade_ultrapassar * 100).toFixed(2)}%`;
+            if (poluente) {
+                const prob = await fetchJSON(`/probabilidade?poluente=${encodeURIComponent(poluente)}&limite=${limiteProb}`);
+                document.getElementById('prob').textContent = `
+            Com base em ${prob.total_registros} registro(s),
+            a probabilidade de o valor de ${poluente} ultrapassar ${limiteProb} é de ${(prob.probabilidade_ultrapassar * 100).toFixed(2)}%.
+        `;
+            } else {
+                document.getElementById('prob').textContent = 'Selecione um poluente para calcular a probabilidade.';
+            }
+
         }
 
         window.onload = () => {
@@ -540,14 +543,14 @@
 
             btnLeft.addEventListener('click', () => {
                 graficos.scrollBy({
-                    left: -1100,
+                    left: -1900,
                     behavior: 'smooth'
                 });
             });
 
             btnRight.addEventListener('click', () => {
                 graficos.scrollBy({
-                    left: 1100,
+                    left: 1900,
                     behavior: 'smooth'
                 });
             });

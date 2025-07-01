@@ -5,79 +5,80 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.neighbors import KNeighborsClassifier
 from scipy import stats
 from sklearn.linear_model import LinearRegression
-import datetime
 
 app = Flask(__name__)
 
-# --- Carregar e tratar dados (com imputação KNN para cidades) ---
+# --- Carregar e tratar dados ---
 def carregar_e_tratar_dados():
     df = pd.read_csv('data/world_air_quality.csv')
 
+    # Extrair latitude e longitude
     df[['Latitude', 'Longitude']] = df['Coordinates'].str.strip().str.split(',', expand=True)
     df['Latitude'] = df['Latitude'].astype(float)
     df['Longitude'] = df['Longitude'].astype(float)
 
+    # Limpeza inicial
     df.drop(columns=['Source Name', 'Location'], inplace=True)
 
-    # Imputar cidades faltantes com KNN baseado em lat/lon
+    # Preencher cidades nulas via KNN
     df_validos = df.dropna(subset=['City', 'Latitude', 'Longitude']).copy()
     df_nulos = df[df['City'].isnull() & df['Latitude'].notnull() & df['Longitude'].notnull()].copy()
 
     le = LabelEncoder()
-    df_validos['Country Code'] = le.fit_transform(df_validos['City'])
+    df_validos['City_Code'] = le.fit_transform(df_validos['City'])
     knn = KNeighborsClassifier(n_neighbors=3)
-    knn.fit(df_validos[['Latitude','Longitude']], df_validos['Country Code'])
+    knn.fit(df_validos[['Latitude', 'Longitude']], df_validos['City_Code'])
+
     if not df_nulos.empty:
-        y_pred = knn.predict(df_nulos[['Latitude','Longitude']])
+        y_pred = knn.predict(df_nulos[['Latitude', 'Longitude']])
         df_nulos['City_Prevista'] = le.inverse_transform(y_pred)
         df.loc[df_nulos.index, 'City'] = df_nulos['City_Prevista']
 
-    # Remove negativos e duplicados
-    df = df[df['Value'] >= 0]
-    df = df.drop_duplicates()
-
-    # Converte data
+    # Limpar dados inválidos
+    df = df[df['Value'] >= 0].drop_duplicates()
     df['Last Updated'] = pd.to_datetime(df['Last Updated'], errors='coerce')
 
     return df
 
 df_global = carregar_e_tratar_dados()
 
-# --- Rota index (front-end) ---
+# --- Rotas de frontend ---
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# --- Rota para pegar países únicos ---
+@app.route('/teste_t_rota')
+def test_t():
+    return render_template('test_t.html')
+
+# --- Rotas de dados básicos ---
 @app.route('/paises')
 def paises():
     paises = sorted(df_global['Country Label'].dropna().unique().tolist())
     return jsonify(paises)
 
-# --- Rota para pegar cidades por país ---
 @app.route('/cidades')
 def cidades():
-    pais = request.args.get('pais', None)
+    pais = request.args.get('pais')
     if pais:
-        cidades = sorted(df_global[df_global['Country Label'] == pais]['City'].dropna().unique().tolist())
+        cidades = df_global[df_global['Country Label'] == pais]['City'].dropna().unique()
     else:
-        cidades = sorted(df_global['City'].dropna().unique().tolist())
-    return jsonify(cidades)
+        cidades = df_global['City'].dropna().unique()
+    return jsonify(sorted(cidades.tolist()))
 
-# --- Rota para pegar poluentes únicos ---
 @app.route('/poluentes')
 def poluentes():
     poluentes = sorted(df_global['Pollutant'].dropna().unique().tolist())
     return jsonify(poluentes)
 
-# --- Rota para pegar dados filtrados com amostragem ---
+# --- Dados filtrados com amostragem ---
 @app.route('/dados')
 def dados():
-    pais = request.args.get('pais', None)
-    cidade = request.args.get('cidade', None)
-    poluente = request.args.get('poluente', None)
-    unidade = request.args.get('unidade', None)
-    amostragem = request.args.get('amostragem', '100')  # porcentagem 0-100
+    pais = request.args.get('pais')
+    cidade = request.args.get('cidade')
+    poluente = request.args.get('poluente')
+    unidade = request.args.get('unidade')
+    amostragem = int(request.args.get('amostragem', 100))
 
     df_filtrado = df_global.copy()
 
@@ -90,22 +91,18 @@ def dados():
     if unidade:
         df_filtrado = df_filtrado[df_filtrado['Unit'] == unidade]
 
-    # Amostragem estratificada por poluente (se amostragem < 100)
-    if int(amostragem) < 100:
+    if amostragem < 100:
         df_filtrado = df_filtrado.groupby('Pollutant', group_keys=False).apply(
-            lambda x: x.sample(frac=int(amostragem)/100, random_state=42)
+            lambda x: x.sample(frac=amostragem/100, random_state=42)
         )
 
-    # Retorna dados no formato JSON para front
     return jsonify(df_filtrado.to_dict(orient='records'))
 
-
-
-# --- Rota análise descritiva ---
+# --- Estatísticas descritivas ---
 @app.route('/analise_descritiva')
 def analise_descritiva():
-    pais = request.args.get('pais', None)
-    poluente = request.args.get('poluente', None)
+    pais = request.args.get('pais')
+    poluente = request.args.get('poluente')
 
     df_filtrado = df_global.copy()
     if pais:
@@ -113,23 +110,16 @@ def analise_descritiva():
     if poluente:
         df_filtrado = df_filtrado[df_filtrado['Pollutant'] == poluente]
 
-    # Estatísticas básicas
-    media = df_filtrado['Value'].mean()
-    mediana = df_filtrado['Value'].median()
-    std = df_filtrado['Value'].std()
-    max_val = df_filtrado['Value'].max()
-    min_val = df_filtrado['Value'].min()
-
     return jsonify({
-        'media': media,
-        'mediana': mediana,
-        'std': std,
-        'max': max_val,
-        'min': min_val,
+        'media': df_filtrado['Value'].mean(),
+        'mediana': df_filtrado['Value'].median(),
+        'std': df_filtrado['Value'].std(),
+        'max': df_filtrado['Value'].max(),
+        'min': df_filtrado['Value'].min(),
         'count': len(df_filtrado)
     })
 
-# --- Rota aplicação probabilidade: probabilidade de ultrapassar limite ---
+# --- Probabilidade de ultrapassar limite ---
 @app.route('/probabilidade')
 def probabilidade():
     poluente = request.args.get('poluente', None)
@@ -154,19 +144,20 @@ def probabilidade():
     })
 
 
-@app.route('/teste_t_rota')
-def test_t():
-    return render_template('test_t.html')
-
-# --- Rota inferência estatística: teste t entre dois países ---
+# --- Teste T com melhorias ---
 @app.route('/teste_t')
 def teste_t():
-    pais1 = request.args.get('pais1', None)
-    pais2 = request.args.get('pais2', None)
-    poluente = request.args.get('poluente', None)
+    pais1 = request.args.get('pais1')
+    pais2 = request.args.get('pais2')
+    poluente = request.args.get('poluente')
+    limite = request.args.get('limite', None, type=float)
 
-    df1 = df_global[(df_global['Country Label'] == pais1) & (df_global['Pollutant'] == poluente)]
-    df2 = df_global[(df_global['Country Label'] == pais2) & (df_global['Pollutant'] == poluente)]
+    df1 = df_global[(df_global['Country Label'] == pais1) & (df_global['Pollutant'] == poluente)].copy()
+    df2 = df_global[(df_global['Country Label'] == pais2) & (df_global['Pollutant'] == poluente)].copy()
+
+    if limite is not None:
+        df1 = df1[df1['Value'] <= limite]
+        df2 = df2[df2['Value'] <= limite]
 
     if len(df1) < 2 or len(df2) < 2:
         return jsonify({'erro': 'Número insuficiente de amostras para teste t.'})
@@ -178,54 +169,47 @@ def teste_t():
         'pais2': pais2,
         'poluente': poluente,
         't_stat': t_stat,
-        'p_valor': p_val
+        'p_valor': p_val,
+        'n_amostras_pais1': len(df1),
+        'n_amostras_pais2': len(df2),
+        'media_pais1': df1['Value'].mean(),
+        'media_pais2': df2['Value'].mean()
     })
 
-# --- Rota correlação Pearson ---
+# --- Correlação entre poluentes ---
 @app.route('/correlacao')
 def correlacao():
-    pais = request.args.get('pais', None)
-    df_filtrado = df_global.copy()
-    if pais:
-        df_filtrado = df_filtrado[df_filtrado['Country Label'] == pais]
+    pais = request.args.get('pais')
+    df_filtrado = df_global[df_global['Country Label'] == pais] if pais else df_global
 
-    # Pivot para matriz poluentes por registros
-    tabela = df_filtrado.pivot_table(index=['City','Last Updated'], columns='Pollutant', values='Value')
+    tabela = df_filtrado.pivot_table(index=['City', 'Last Updated'], columns='Pollutant', values='Value')
+    tabela = tabela.dropna()
 
-    # Drop linhas com NA
-    tabela = tabela.dropna(axis=0, how='any')
+    return jsonify(tabela.corr(method='pearson').to_dict())
 
-    # Calcular correlação Pearson
-    corr = tabela.corr(method='pearson')
-
-    return jsonify(corr.to_dict())
-
-# --- Rota regressão linear (simplificada) ---
+# --- Regressão linear simples ---
 @app.route('/regressao')
 def regressao():
-    poluente_x = request.args.get('poluente_x', None)
-    poluente_y = request.args.get('poluente_y', None)
-    pais = request.args.get('pais', None)
+    poluente_x = request.args.get('poluente_x')
+    poluente_y = request.args.get('poluente_y')
+    pais = request.args.get('pais')
 
-    df_filtrado = df_global.copy()
-    if pais:
-        df_filtrado = df_filtrado[df_filtrado['Country Label'] == pais]
+    df_filtrado = df_global[df_global['Country Label'] == pais] if pais else df_global
 
-    tabela = df_filtrado.pivot_table(index=['City','Last Updated'], columns='Pollutant', values='Value').dropna()
-    X = tabela[poluente_x].values.reshape(-1,1)
+    tabela = df_filtrado.pivot_table(index=['City', 'Last Updated'], columns='Pollutant', values='Value').dropna()
+
+    X = tabela[poluente_x].values.reshape(-1, 1)
     y = tabela[poluente_y].values
 
     model = LinearRegression()
-    model.fit(X,y)
-    coef = model.coef_[0]
-    intercept = model.intercept_
-    score = model.score(X,y)
+    model.fit(X, y)
 
     return jsonify({
-        'coeficiente': coef,
-        'intercepto': intercept,
-        'r2_score': score
+        'coeficiente': model.coef_[0],
+        'intercepto': model.intercept_,
+        'r2_score': model.score(X, y)
     })
 
+# --- Inicialização ---
 if __name__ == '__main__':
     app.run(debug=True)
