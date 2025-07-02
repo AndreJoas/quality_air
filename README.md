@@ -1,10 +1,10 @@
-1- abra o terminal no vscode
+#1- abra o terminal no vscode
 
 # 2. Crie o ambiente virtual
 python -m venv .venv
 
 # 3. Ative o ambiente virtual
-# No Windows:
+- No Windows:
 .venv\Scripts\activate
 
 
