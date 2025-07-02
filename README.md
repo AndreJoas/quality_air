@@ -1,4 +1,5 @@
 #1- abra o terminal no vscode
+munda de branch com o comando: git checkout Denisebranch
 
 # 2. Crie o ambiente virtual
 python -m venv .venv
