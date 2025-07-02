@@ -124,10 +124,20 @@ def analise_descritiva():
 def probabilidade():
     poluente = request.args.get('poluente', None)
     limite = float(request.args.get('limite', '0'))
+    pais = request.args.get('pais', None)
+    cidade = request.args.get('cidade', None)
+    unidade = request.args.get('unidade', None)
 
-    df_filtrado = df_global
+    df_filtrado = df_global.copy()
+
     if poluente:
         df_filtrado = df_filtrado[df_filtrado['Pollutant'] == poluente]
+    if pais:
+        df_filtrado = df_filtrado[df_filtrado['Country Label'] == pais]
+    if cidade:
+        df_filtrado = df_filtrado[df_filtrado['City'] == cidade]
+    if unidade:
+        df_filtrado = df_filtrado[df_filtrado['Unit'] == unidade]
 
     total = len(df_filtrado)
     if total == 0:

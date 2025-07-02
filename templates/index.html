@@ -521,7 +521,9 @@
                 `;
 
             if (poluente) {
-                const prob = await fetchJSON(`/probabilidade?poluente=${encodeURIComponent(poluente)}&limite=${limiteProb}`);
+                const prob = await fetchJSON(`/probabilidade?poluente=${encodeURIComponent(poluente)}&limite=${limiteProb}&pais=${encodeURIComponent(pais)}&cidade=${encodeURIComponent(cidade)}&unidade=${encodeURIComponent(unidade)}`);
+
+                
                 document.getElementById('prob').textContent = `
             Com base em ${prob.total_registros} registro(s),
             a probabilidade de o valor de ${poluente} ultrapassar ${limiteProb} é de ${(prob.probabilidade_ultrapassar * 100).toFixed(2)}%.
