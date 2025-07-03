@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>🌍 Globo Interativo de Poluição</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(circle at center, #1a2b4c 0%, #000 100%);
+        font-family: "Segoe UI", sans-serif;
+        color: #fff;
+      }
+
+      header {
+        text-align: center;
+        padding: 20px 10px 10px;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 28px;
+        color: #ffd700;
+        text-shadow: 1px 1px 3px #000;
+      }
+
+      #globo-mapa {
+        width: 100vw;
+        height: 80vh;
+        position: relative;
+      }
+
+      #globo-mapa::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(
+          circle at center,
+          rgba(255, 255, 255, 0.04),
+          transparent 65%
+        );
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      .voltar-btn {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background-color: #ffd700;
+        color: #000;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 25px;
+        font-weight: bold;
+        text-decoration: none;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s ease;
+        z-index: 10;
+      }
+
+      .voltar-btn:hover {
+        background-color: #ffb700;
+        transform: scale(1.05);
+      }
+
+      #info-card {
+        position: absolute;
+        top: 100px;
+        right: 20px;
+        width: 300px;
+        background: #1a2b4c;
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        display: none;
+        z-index: 5;
+        border: 2px solid #ffd700;
+      }
+
+      #info-card h2 {
+        margin-top: 0;
+        color: #ffd700;
+      }
+
+      #info-card .fechar-btn {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        cursor: pointer;
+        color: #fff;
+        font-weight: bold;
+        font-size: 18px;
+      }
+
+      #info-card .fechar-btn:hover {
+        color: #ffd700;
+      }
+    </style>
+  </head>
+
+  <body>
+    <a href="/" class="voltar-btn">← Voltar</a>
+
+    <header>
+      <h1>🌍 Visualização Global da Poluição do Ar</h1>
+    </header>
+
+    <div id="globo-mapa"></div>
+
+    <!-- CARD DE INFORMAÇÕES -->
+    <div id="info-card">
+      <span
+        class="fechar-btn"
+        onclick="document.getElementById('info-card').style.display='none'"
+        >✖</span
+      >
+      <h2 id="cidade-nome">Cidade</h2>
+      <p><strong>País:</strong> <span id="pais-nome"></span></p>
+      <p><strong>Valor:</strong> <span id="valor-poluição"></span></p>
+      <p><strong>Unidade:</strong> <span id="unidade-poluição"></span></p>
+    </div>
+
+    <script>
+      async function fetchJSON(url) {
+        const res = await fetch(url);
+        return await res.json();
+      }
+
+      async function carregarMapa() {
+        const filtros =
+          JSON.parse(localStorage.getItem("filtrosQualidadeAr")) || {};
+        let url = "/dados?";
+        if (filtros.pais) url += `pais=${encodeURIComponent(filtros.pais)}&`;
+        if (filtros.cidade)
+          url += `cidade=${encodeURIComponent(filtros.cidade)}&`;
+        if (filtros.poluente)
+          url += `poluente=${encodeURIComponent(filtros.poluente)}&`;
+        if (filtros.unidade)
+          url += `unidade=${encodeURIComponent(filtros.unidade)}&`;
+
+        const dados = await fetchJSON(url);
+        const topDados = dados.sort((a, b) => b.Value - a.Value).slice(0, 100);
+        const latitudes = topDados.map((d) => d.Latitude);
+        const longitudes = topDados.map((d) => d.Longitude);
+        const valores = topDados.map((d) => d.Value);
+        const cidades = topDados.map((d) => d.City);
+        const unidade = filtros.unidade || "µg/m³";
+
+        const traceMapa = {
+          type: "scattergeo",
+          mode: "markers",
+          lat: latitudes,
+          lon: longitudes,
+          marker: {
+            size: 10,
+            color: valores,
+            colorscale: "YlOrRd",
+            cmin: Math.min(...valores),
+            cmax: Math.max(...valores),
+            colorbar: {
+              title: `Poluição (${unidade})`,
+              thickness: 10,
+              len: 0.5,
+              tickfont: { color: "#fff" },
+              titlefont: { color: "#FFD700" },
+            },
+            line: { width: 1, color: "#fff" },
+            opacity: 0.95,
+          },
+          text: cidades.map(
+            (c, i) => `${c}<br><b>${valores[i].toFixed(2)} ${unidade}</b>`
+          ),
+          hoverinfo: "text",
+          customdata: topDados.map((d) => ({
+            cidade: d.City,
+            pais: d["Country Label"], // ✅ Correto agora
+            valor: d.Value,
+            unidade: unidade,
+          })),
+          
+        };
+
+        const layoutMapa = {
+          geo: {
+            projection: {
+              type: "orthographic",
+              rotation: { lon: 0, lat: 0 },
+            },
+            showland: true,
+            landcolor: "#3b5b77",
+            showocean: true,
+            oceancolor: "#1d3a5c",
+            lakecolor: "#29435c",
+            showlakes: true,
+            showcountries: true,
+            countrycolor: "#ccc",
+            bgcolor: "rgba(0,0,0,0)",
+          },
+          paper_bgcolor: "rgba(0,0,0,0)",
+          plot_bgcolor: "rgba(0,0,0,0)",
+          margin: { l: 0, r: 0, t: 0, b: 0 },
+        };
+
+        Plotly.newPlot("globo-mapa", [traceMapa], layoutMapa, {
+          responsive: true,
+          displayModeBar: false,
+          scrollZoom: true,
+        });
+
+        // EVENTO AO CLICAR NA BOLINHA
+        const mapaDiv = document.getElementById("globo-mapa");
+        mapaDiv.on("plotly_click", function (data) {
+          const ponto = data.points[0].customdata;
+          document.getElementById("cidade-nome").textContent = ponto.cidade;
+          document.getElementById("pais-nome").textContent = ponto.pais;
+          document.getElementById("valor-poluição").textContent =
+            ponto.valor.toFixed(2);
+          document.getElementById("unidade-poluição").textContent =
+            ponto.unidade;
+
+          document.getElementById("info-card").style.display = "block";
+        });
+      }
+
+      window.onload = carregarMapa;
+    </script>
+  </body>
+</html>

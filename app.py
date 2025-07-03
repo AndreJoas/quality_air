@@ -51,6 +51,10 @@ def index():
 def test_t():
     return render_template('test_t.html')
 
+@app.route('/global')
+def global2():
+    return render_template('globa.html')
+
 # --- Rotas de dados básicos ---
 @app.route('/paises')
 def paises():
@@ -68,8 +72,37 @@ def cidades():
 
 @app.route('/poluentes')
 def poluentes():
-    poluentes = sorted(df_global['Pollutant'].dropna().unique().tolist())
+    pais = request.args.get('pais')
+    cidade = request.args.get('cidade')
+
+    df_filtrado = df_global.copy()
+
+    if pais:
+        df_filtrado = df_filtrado[df_filtrado['Country Label'] == pais]
+    if cidade:
+        df_filtrado = df_filtrado[df_filtrado['City'] == cidade]
+
+    poluentes = sorted(df_filtrado['Pollutant'].dropna().unique().tolist())
     return jsonify(poluentes)
+
+@app.route('/unidades')
+def unidades():
+    pais = request.args.get('pais')
+    cidade = request.args.get('cidade')
+    poluente = request.args.get('poluente')
+
+    df_filtrado = df_global.copy()
+
+    if pais:
+        df_filtrado = df_filtrado[df_filtrado['Country Label'] == pais]
+    if cidade:
+        df_filtrado = df_filtrado[df_filtrado['City'] == cidade]
+    if poluente:
+        df_filtrado = df_filtrado[df_filtrado['Pollutant'] == poluente]
+
+    unidades = sorted(df_filtrado['Unit'].dropna().unique().tolist())
+    return jsonify(unidades)
+
 
 # --- Dados filtrados com amostragem ---
 @app.route('/dados')
@@ -111,13 +144,14 @@ def analise_descritiva():
         df_filtrado = df_filtrado[df_filtrado['Pollutant'] == poluente]
 
     return jsonify({
-        'media': df_filtrado['Value'].mean(),
-        'mediana': df_filtrado['Value'].median(),
-        'std': df_filtrado['Value'].std(),
-        'max': df_filtrado['Value'].max(),
-        'min': df_filtrado['Value'].min(),
-        'count': len(df_filtrado)
-    })
+    'media': float(df_filtrado['Value'].mean()),
+    'mediana': float(df_filtrado['Value'].median()),
+    'std': float(df_filtrado['Value'].std()),
+    'max': float(df_filtrado['Value'].max()),
+    'min': float(df_filtrado['Value'].min()),
+    'count': int(len(df_filtrado))
+})
+
 
 # --- Probabilidade de ultrapassar limite ---
 @app.route('/probabilidade')
@@ -147,11 +181,12 @@ def probabilidade():
         prob = acima / total
 
     return jsonify({
-        'probabilidade_ultrapassar': prob,
-        'total_registros': total,
-        'limite': limite,
-        'poluente': poluente
-    })
+    'probabilidade_ultrapassar': float(prob),
+    'total_registros': int(total),
+    'limite': float(limite),
+    'poluente': poluente
+})
+
 
 
 # --- Teste T com melhorias ---

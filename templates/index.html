@@ -1,517 +1,595 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <title>Dashboard Qualidade do Ar</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        /* Reset básico */
-        
-        * {
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-            color: #f1f1f1;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 30px 15px;
-            line-height: 1.5;
-        }
-        
-        h1 {
-            font-weight: 900;
-            font-size: 2.8rem;
-            margin-bottom: 15px;
-            letter-spacing: 2px;
-            text-shadow: 0 0 8px #89abe3aa;
-        }
-        
-        a {
-            color: #ffdd59;
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.3s ease;
-        }
-        
-        a:hover {
-            color: #ffd700;
-            text-shadow: 0 0 8px #ffd700aa;
-        }
-        
-        #filtros-info-container {
-            display: flex;
-            max-width: 980px;
-            width: 100%;
-            gap: 40px;
-            margin-bottom: 40px;
-        }
-        
-        #filtros {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 25px 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
-            flex: 1;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
-        }
-        
-        select,
-        input[type="number"] {
-            width: 100%;
-            padding: 12px 15px;
-            border-radius: 8px;
-            border: none;
-            background-color: rgba(255, 255, 255, 0.15);
-            color: #f1f1f1;
-            font-size: 1rem;
-            box-shadow: inset 0 0 6px #00000044;
-            transition: background-color 0.3s ease, box-shadow 0.3s ease;
-            appearance: none;
-            cursor: pointer;
-        }
-        
-        select:focus,
-        input[type="number"]:focus {
-            outline: none;
-            background-color: rgba(255, 255, 255, 0.3);
-            box-shadow: 0 0 8px #ffdd59;
-            color: #182848;
-            cursor: text;
-        }
-        
-        button {
-            grid-column: 1 / -1;
-            padding: 14px 0;
-            font-size: 1.15rem;
-            font-weight: 700;
-            border-radius: 10px;
-            border: none;
-            background: #ffdd59;
-            color: #182848;
-            cursor: pointer;
-            box-shadow: 0 6px 15px #ffdd5988;
-            transition: background 0.25s ease, transform 0.15s ease;
-            user-select: none;
-        }
-        
-        button:hover {
-            background: #ffd700;
-            transform: scale(1.05);
-        }
-        
-        #info-poluentes {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-            font-size: 0.9rem;
-            line-height: 1.5;
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        
-        #info-poluentes h2 {
-            color: #ffdd59;
-            margin-top: 0;
-            margin-bottom: 15px;
-        }
-        
-        #graficos-container {
-            width: 82%;
-            max-width: 82%;
-            position: relative;
-            margin-bottom: 50px;
-            display: flex;
-            justify-content: center;
-        }
-        
-        .btn-carousel {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255, 221, 89, 0.85);
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-            transition: background 0.3s ease;
-            z-index: 10;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.8rem;
-            color: #182848;
-            user-select: none;
-        }
-        
-        .btn-carousel:hover {
-            background: #ffd700;
-        }
-        
-        #btn-left {
-            left: -50px;
-        }
-        
-        #btn-right {
-            right: -50px;
-        }
-        
-        #graficos {
-            display: flex;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            gap: 40px;
-            padding-bottom: 10px;
-        }
-        
-        #graficos::-webkit-scrollbar {
-            display: none;
-        }
-        
-        #graficos {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-        
-        #graficos>div {
-            flex: 0 0 920px;
-            min-width: 80vw;
-            max-width: 100%;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-            padding: 15px;
-            min-height: 400px;
-        }
-        
-        #resultado-analise {
-            background: rgba(255, 255, 255, 0.12);
-            padding: 25px 30px;
-            border-radius: 14px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-            max-width: 980px;
-            width: 100%;
-        }
-        
-        #resultado-analise h3 {
-            margin-top: 0;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            color: #ffdd59;
-            margin-bottom: 12px;
-            text-shadow: 0 0 6px #ffdd5988;
-        }
-        
-        #resultado-analise p {
-            font-size: 1rem;
-            line-height: 1.4;
-            color: #e3e3e3;
-            white-space: pre-line;
-            margin-bottom: 25px;
-        }
-    </style>
-</head>
+      /* Reset básico */
 
-<body>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+        color: #f1f1f1;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 30px 15px;
+        line-height: 1.5;
+      }
+
+      h1 {
+        font-weight: 900;
+        font-size: 2.8rem;
+        margin-bottom: 15px;
+        letter-spacing: 2px;
+        text-shadow: 0 0 8px #89abe3aa;
+      }
+
+      a {
+        color: #ffdd59;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s ease;
+      }
+
+      a:hover {
+        color: #ffd700;
+        text-shadow: 0 0 8px #ffd700aa;
+      }
+
+      #filtros-info-container {
+        display: flex;
+        max-width: 980px;
+        width: 100%;
+        gap: 40px;
+        margin-bottom: 40px;
+      }
+
+      #filtros {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 25px 30px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+      }
+
+      select,
+      input[type="number"] {
+        width: 100%;
+        padding: 12px 15px;
+        border-radius: 8px;
+        border: none;
+        background-color: rgba(255, 255, 255, 0.15);
+        color: #f1f1f1;
+        font-size: 1rem;
+        box-shadow: inset 0 0 6px #00000044;
+        transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        appearance: none;
+        cursor: pointer;
+      }
+
+      select:focus,
+      input[type="number"]:focus {
+        outline: none;
+        background-color: rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 8px #ffdd59;
+        color: #182848;
+        cursor: text;
+      }
+
+      button {
+        grid-column: 1 / -1;
+        padding: 14px 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        border-radius: 10px;
+        border: none;
+        background: #ffdd59;
+        color: #182848;
+        cursor: pointer;
+        box-shadow: 0 6px 15px #ffdd5988;
+        transition: background 0.25s ease, transform 0.15s ease;
+        user-select: none;
+      }
+
+      button:hover {
+        background: #ffd700;
+        transform: scale(1.05);
+      }
+
+      #info-poluentes {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        max-height: 600px;
+        overflow-y: auto;
+      }
+
+      #info-poluentes h2 {
+        color: #ffdd59;
+        margin-top: 0;
+        margin-bottom: 15px;
+      }
+
+      #graficos-container {
+        width: 82%;
+        max-width: 82%;
+        position: relative;
+        margin-bottom: 50px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .btn-carousel {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 221, 89, 0.85);
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        transition: background 0.3s ease;
+        z-index: 10;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.8rem;
+        color: #182848;
+        user-select: none;
+      }
+
+      .btn-carousel:hover {
+        background: #ffd700;
+      }
+
+      #btn-left {
+        left: -50px;
+      }
+
+      #btn-right {
+        right: -50px;
+      }
+
+      #graficos {
+        display: flex;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        gap: 40px;
+        padding-bottom: 10px;
+      }
+
+      #graficos::-webkit-scrollbar {
+        display: none;
+      }
+
+      #graficos {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      #graficos > div {
+        flex: 0 0 920px;
+        min-width: 80vw;
+        max-width: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        padding: 15px;
+        min-height: 400px;
+      }
+
+      #resultado-analise {
+        background: rgba(255, 255, 255, 0.12);
+        padding: 25px 30px;
+        border-radius: 14px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        max-width: 980px;
+        width: 100%;
+      }
+
+      #resultado-analise h3 {
+        margin-top: 0;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        color: #ffdd59;
+        margin-bottom: 12px;
+        text-shadow: 0 0 6px #ffdd5988;
+      }
+
+      #resultado-analise p {
+        font-size: 1rem;
+        line-height: 1.4;
+        color: #e3e3e3;
+        white-space: pre-line;
+        margin-bottom: 25px;
+      }
+    </style>
+  </head>
+
+  <body>
     <h1>Dashboard Qualidade do Ar</h1>
     <p><a href="/teste_t_rota">Ir para página do Teste T</a></p>
 
     <div id="filtros-info-container">
-        <div id="filtros">
-            <select id="pais-select">
-                <option value="">Todos os Países</option>
-            </select>
-            <select id="cidade-select">
-                <option value="">Todas as Cidades</option>
-            </select>
-            <select id="poluente-select">
-                <option value="">Todos os Poluentes</option>
-            </select>
-            <select id="unidade-select">
-                <option value="">Todas as Unidades</option>
-                <option value="µg/m³">µg/m³</option>
-                <option value="ppm">ppm</option>
-                <option value="c">°C</option>
-                <option value="f">°F</option>
-            </select>
-            <input type="number" id="limite-prob" placeholder="Limite p/ probabilidade" />
-            <button onclick="atualizarDashboard()">Atualizar</button>
-        </div>
+      <div id="filtros">
+        <select id="pais-select">
+          <option value="">Todos os Países</option>
+        </select>
+        <select id="cidade-select">
+          <option value="">Todas as Cidades</option>
+        </select>
+        <select id="poluente-select">
+          <option value="">Todos os Poluentes</option>
+        </select>
+        <select id="unidade-select">
+          <option value="">Todas as Unidades</option>
+        </select>
 
-        <div id="info-poluentes">
-            <h2>Informações sobre Poluentes e Medidas</h2>
-            <p><strong>PM10</strong>: Partículas inaláveis até 10 micrômetros<br>Unidade: µg/m³</p>
-            <p><strong>PM2.5</strong>: Partículas finas até 2.5 micrômetros<br>Unidade: µg/m³</p>
-            <p><strong>PM1</strong>: Partículas ultrafinas até 1 micrômetro<br>Unidade: µg/m³</p>
-            <p><strong>NO</strong>: Monóxido de nitrogênio<br>Unidade: ppm ou µg/m³</p>
-            <p><strong>NO2</strong>: Dióxido de nitrogênio<br>Unidade: ppm ou µg/m³</p>
-            <p><strong>NOX</strong>: Óxidos de nitrogênio<br>Unidade: ppm</p>
-            <p><strong>O3</strong>: Ozônio<br>Unidade: ppm</p>
-            <p><strong>CO</strong>: Monóxido de carbono<br>Unidade: ppm</p>
-            <p><strong>SO2</strong>: Dióxido de enxofre<br>Unidade: ppm</p>
-            <p><strong>BC</strong>: Black Carbon<br>Unidade: µg/m³</p>
-            <p><strong>TEMPERATURA</strong>: Temperatura do ar<br>Unidade: °C ou °F</p>
-        </div>
+        <input
+          type="number"
+          id="limite-prob"
+          placeholder="Limite p/ probabilidade"
+        />
+        <button onclick="atualizarDashboard()">Atualizar</button>
+      </div>
+
+      <div id="info-poluentes">
+        <h2>Informações sobre Poluentes e Medidas</h2>
+        <p>
+          <strong>PM10</strong>: Partículas inaláveis até 10 micrômetros<br />Unidade:
+          µg/m³
+        </p>
+        <p>
+          <strong>PM2.5</strong>: Partículas finas até 2.5 micrômetros<br />Unidade:
+          µg/m³
+        </p>
+        <p>
+          <strong>PM1</strong>: Partículas ultrafinas até 1 micrômetro<br />Unidade:
+          µg/m³
+        </p>
+        <p>
+          <strong>NO</strong>: Monóxido de nitrogênio<br />Unidade: ppm ou µg/m³
+        </p>
+        <p>
+          <strong>NO2</strong>: Dióxido de nitrogênio<br />Unidade: ppm ou µg/m³
+        </p>
+        <p><strong>NOX</strong>: Óxidos de nitrogênio<br />Unidade: ppm</p>
+        <p><strong>O3</strong>: Ozônio<br />Unidade: ppm</p>
+        <p><strong>CO</strong>: Monóxido de carbono<br />Unidade: ppm</p>
+        <p><strong>SO2</strong>: Dióxido de enxofre<br />Unidade: ppm</p>
+        <p><strong>BC</strong>: Black Carbon<br />Unidade: µg/m³</p>
+        <p>
+          <strong>TEMPERATURA</strong>: Temperatura do ar<br />Unidade: °C ou °F
+        </p>
+      </div>
     </div>
 
     <!-- Carrossel -->
     <div id="graficos-container">
-        <button class="btn-carousel" id="btn-left">&#8249;</button>
-        <div id="graficos">
-            <div id="graf-histograma"></div>
-            <div id="graf-boxplot"></div>
-            <div id="graf-pareto"></div>
-            <div id="graf-scatter"></div>
-            <div id="graf-mapa"></div>
-        </div>
-        <button class="btn-carousel" id="btn-right">&#8250;</button>
+      <button class="btn-carousel" id="btn-left">&#8249;</button>
+      <div id="graficos">
+        <div id="graf-histograma"></div>
+        <div id="graf-boxplot"></div>
+        <div id="graf-pareto"></div>
+        <div id="graf-scatter"></div>
+        
+        <a href="/global" onclick="salvarFiltros()">🌐 Ver Globo Interativo</a>
+
+      </div>
+      <button class="btn-carousel" id="btn-right">&#8250;</button>
     </div>
 
     <div id="resultado-analise">
-        <h3>Análise Descritiva</h3>
-        <p id="stats"></p>
-        <h3>Probabilidade Ultrapassar Limite</h3>
-        <p id="prob"></p>
+      <h3>Análise Descritiva</h3>
+      <p id="stats"></p>
+      <h3>Probabilidade Ultrapassar Limite</h3>
+      <p id="prob"></p>
     </div>
 
     <script>
-        async function fetchJSON(url) {
-            const res = await fetch(url);
-            return await res.json();
-        }
+      async function fetchJSON(url) {
+        const res = await fetch(url);
+        return await res.json();
+      }
 
-        async function popularSelects() {
-            const paises = await fetchJSON('/paises');
-            const paisSelect = document.getElementById('pais-select');
-            paises.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p;
-                opt.textContent = p;
-                paisSelect.appendChild(opt);
+      async function popularSelects() {
+        const paises = await fetchJSON("/paises");
+        const paisSelect = document.getElementById("pais-select");
+        const cidadeSelect = document.getElementById("cidade-select");
+        const poluenteSelect = document.getElementById("poluente-select");
+        const unidadeSelect = document.getElementById("unidade-select");
+
+        // Popular países
+        paises.forEach((p) => {
+          const opt = document.createElement("option");
+          opt.value = p;
+          opt.textContent = p;
+          paisSelect.appendChild(opt);
+        });
+
+        // Quando mudar o país
+        paisSelect.addEventListener("change", async () => {
+          const pais = paisSelect.value;
+
+          // Reset
+          cidadeSelect.innerHTML = '<option value="">Todas as Cidades</option>';
+          poluenteSelect.innerHTML =
+            '<option value="">Todos os Poluentes</option>';
+          unidadeSelect.innerHTML =
+            '<option value="">Todas as Unidades</option>';
+
+          // Popular cidades
+          if (pais) {
+            const cidades = await fetchJSON(
+              "/cidades?pais=" + encodeURIComponent(pais)
+            );
+            cidades.forEach((c) => {
+              const opt = document.createElement("option");
+              opt.value = c;
+              opt.textContent = c;
+              cidadeSelect.appendChild(opt);
             });
 
-            paisSelect.addEventListener('change', async() => {
-                const pais = paisSelect.value;
-                const cidadeSelect = document.getElementById('cidade-select');
-                cidadeSelect.innerHTML = '<option value="">Todas as Cidades</option>';
-
-                if (pais) {
-                    const cidades = await fetchJSON('/cidades?pais=' + encodeURIComponent(pais));
-                    cidades.forEach(c => {
-                        const opt = document.createElement('option');
-                        opt.value = c;
-                        opt.textContent = c;
-                        cidadeSelect.appendChild(opt);
-                    });
-                }
-
-                const poluentes = await fetchJSON('/poluentes');
-                const poluenteSelect = document.getElementById('poluente-select');
-                poluenteSelect.innerHTML = '<option value="">Todos os Poluentes</option>';
-                poluentes.forEach(poluente => {
-                    const opt = document.createElement('option');
-                    opt.value = poluente;
-                    opt.textContent = poluente;
-                    poluenteSelect.appendChild(opt);
-                });
+            const poluentes = await fetchJSON(
+              `/poluentes?pais=${encodeURIComponent(pais)}`
+            );
+            poluentes.forEach((poluente) => {
+              const opt = document.createElement("option");
+              opt.value = poluente;
+              opt.textContent = poluente;
+              poluenteSelect.appendChild(opt);
             });
-        }
+          }
+        });
 
-        async function atualizarDashboard() {
-            const pais = document.getElementById('pais-select').value;
-            const cidade = document.getElementById('cidade-select').value;
-            const poluente = document.getElementById('poluente-select').value;
-            const unidade = document.getElementById('unidade-select').value;
-            const limiteProb = parseFloat(document.getElementById('limite-prob').value) || 0;
+        // Quando mudar a cidade
+        cidadeSelect.addEventListener("change", async () => {
+          const pais = paisSelect.value;
+          const cidade = cidadeSelect.value;
 
-            let url = `/dados?`;
-            if (pais) url += `pais=${encodeURIComponent(pais)}&`;
-            if (cidade) url += `cidade=${encodeURIComponent(cidade)}&`;
-            if (poluente) url += `poluente=${encodeURIComponent(poluente)}&`;
-            if (unidade) url += `unidade=${encodeURIComponent(unidade)}&`;
+          poluenteSelect.innerHTML =
+            '<option value="">Todos os Poluentes</option>';
+          unidadeSelect.innerHTML =
+            '<option value="">Todas as Unidades</option>';
 
-            const dados = await fetchJSON(url);
+          const poluentes = await fetchJSON(
+            `/poluentes?pais=${encodeURIComponent(
+              pais
+            )}&cidade=${encodeURIComponent(cidade)}`
+          );
+          poluentes.forEach((poluente) => {
+            const opt = document.createElement("option");
+            opt.value = poluente;
+            opt.textContent = poluente;
+            poluenteSelect.appendChild(opt);
+          });
+        });
 
-            // Histograma - barras por cidade
-            const traceHist = {
-                x: dados.map(d => d.City),
-                y: dados.map(d => d.Value),
-                type: 'bar',
-                marker: {
-                    color: 'steelblue'
-                }
-            };
-            Plotly.react('graf-histograma', [traceHist], {
-                title: 'Níveis por Cidade',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                responsive: true,
-                font: {
-                    color: '#f1f1f1'
-                }
+        // Quando mudar o poluente → atualizar unidade
+        poluenteSelect.addEventListener("change", async () => {
+          const pais = paisSelect.value;
+          const cidade = cidadeSelect.value;
+          const poluente = poluenteSelect.value;
+
+          unidadeSelect.innerHTML =
+            '<option value="">Todas as Unidades</option>';
+
+          if (poluente) {
+            const unidades = await fetchJSON(
+              `/unidades?pais=${encodeURIComponent(
+                pais
+              )}&cidade=${encodeURIComponent(
+                cidade
+              )}&poluente=${encodeURIComponent(poluente)}`
+            );
+            unidades.forEach((unidade) => {
+              const opt = document.createElement("option");
+              opt.value = unidade;
+              opt.textContent = unidade;
+              unidadeSelect.appendChild(opt);
             });
+          }
+        });
+      }
+
+      function salvarFiltros() {
+        localStorage.setItem("filtrosQualidadeAr", JSON.stringify({
+          pais: document.getElementById("pais-select").value,
+          cidade: document.getElementById("cidade-select").value,
+          poluente: document.getElementById("poluente-select").value,
+          unidade: document.getElementById("unidade-select").value,
+          limite: document.getElementById("limite-prob").value
+        }));
+      }
+
+      async function atualizarDashboard() {
+        const pais = document.getElementById("pais-select").value;
+        const cidade = document.getElementById("cidade-select").value;
+        const poluente = document.getElementById("poluente-select").value;
+        const unidade = document.getElementById("unidade-select").value;
+        const limiteProb =
+          parseFloat(document.getElementById("limite-prob").value) || 0;
+
+        let url = `/dados?`;
+        if (pais) url += `pais=${encodeURIComponent(pais)}&`;
+        if (cidade) url += `cidade=${encodeURIComponent(cidade)}&`;
+        if (poluente) url += `poluente=${encodeURIComponent(poluente)}&`;
+        if (unidade) url += `unidade=${encodeURIComponent(unidade)}&`;
+
+        const dados = await fetchJSON(url);
+
+        // Histograma - barras por cidade
+        const traceHist = {
+          x: dados.map((d) => d.City),
+          y: dados.map((d) => d.Value),
+          type: "bar",
+          marker: {
+            color: "steelblue",
+          },
+        };
+        Plotly.react("graf-histograma", [traceHist], {
+          title: "Níveis por Cidade",
+          plot_bgcolor: "rgba(0,0,0,0)",
+          paper_bgcolor: "rgba(0,0,0,0)",
+          responsive: true,
+          font: {
+            color: "#f1f1f1",
+          },
+        });
+
+        // Boxplot dos valores
+        const traceBox = {
+          y: dados.map((d) => d.Value),
+          type: "box",
+          boxpoints: "outliers",
+          name: "Distribuição de Valores",
+        };
+        Plotly.react("graf-boxplot", [traceBox], {
+          title: "Boxplot de Valores",
+          plot_bgcolor: "rgba(0,0,0,0)",
+          paper_bgcolor: "rgba(0,0,0,0)",
+          responsive: true,
+          font: {
+            color: "#f1f1f1",
+          },
+        });
+
+        // Gráfico de Pareto (valores ordenados + linha acumulada)
+        // 1. Agrupar por cidade
+        const valoresPorCidade = {};
+        dados.forEach((d) => {
+          if (!valoresPorCidade[d.City]) {
+            valoresPorCidade[d.City] = 0;
+          }
+          valoresPorCidade[d.City] += d.Value;
+        });
+
+        // 2. Ordenar cidades por valor total
+        const cidadesOrdenadas = Object.entries(valoresPorCidade).sort(
+          (a, b) => b[1] - a[1]
+        ); // [ [cidade, valorTotal], ... ]
+
+        // 3. Calcular acumulado
+        const somaTotal = cidadesOrdenadas.reduce((acc, [, v]) => acc + v, 0);
+        let acumulado = 0;
+        const acumuladoPercent = cidadesOrdenadas.map(([_, valor]) => {
+          acumulado += valor;
+          return (acumulado / somaTotal) * 100;
+        });
+
+        // 4. Plotar corretamente
+        const traceBarPareto = {
+          x: cidadesOrdenadas.map(([cidade]) => cidade),
+          y: cidadesOrdenadas.map(([_, valor]) => valor),
+          type: "bar",
+          name: "Valores por Cidade",
+          marker: { color: "steelblue" },
+          yaxis: "y1",
+        };
+
+        const traceLinePareto = {
+          x: cidadesOrdenadas.map(([cidade]) => cidade),
+          y: acumuladoPercent,
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Acumulado (%)",
+          line: { color: "#ffdd59", width: 3 },
+          yaxis: "y2",
+        };
+
+        const layoutPareto = {
+          title: "Gráfico de Pareto (Cidades vs. Poluição)",
+          plot_bgcolor: "rgba(0,0,0,0)",
+          paper_bgcolor: "rgba(0,0,0,0)",
+          font: { color: "#f1f1f1" },
+          yaxis: {
+            title: "Valor",
+            side: "left",
+            showgrid: false,
+            zeroline: false,
+          },
+          yaxis2: {
+            title: "Acumulado (%)",
+            side: "right",
+            overlaying: "y",
+            range: [0, 110],
+            showgrid: false,
+            zeroline: false,
+            tickformat: ".0f%",
+          },
+          legend: {
+            x: 0.7,
+            y: 1.1,
+            bgcolor: "rgba(0,0,0,0)",
+          },
+        };
+
+        Plotly.react(
+          "graf-pareto",
+          [traceBarPareto, traceLinePareto],
+          layoutPareto
+        );
+
+        // Scatter simples
+        const traceScatter = {
+          x: dados.map((d) => new Date(d["Last Updated"])),
+          y: dados.map((d) => d.Value),
+          mode: "markers",
+          type: "scatter",
+          marker: { size: 10, color: "lightgreen" },
+          text: dados.map(
+            (d) =>
+              `Cidade: ${d.City}<br>Data/Hora: ${new Date(
+                d["Last Updated"]
+              ).toLocaleString()}<br>Valor: ${d.Value}`
+          ),
+          hoverinfo: "text",
+        };
+
+        const layoutScatter = {
+          title: "Dispersão por Data e Hora",
+          xaxis: {
+            title: "Data e Hora",
+            type: "date",
+            tickformat: "%d %b %H:%M",
+            hoverformat: "%d/%m/%Y %H:%M:%S",
+          },
+          yaxis: {
+            title: "Valor do Poluente",
+          },
+          plot_bgcolor: "rgba(0,0,0,0)",
+          paper_bgcolor: "rgba(0,0,0,0)",
+          font: { color: "#f1f1f1" },
+          hovermode: "closest",
+        };
+
+        Plotly.react("graf-scatter", [traceScatter], layoutScatter);
 
 
-            // Boxplot dos valores
-            const traceBox = {
-                y: dados.map(d => d.Value),
-                type: 'box',
-                boxpoints: 'outliers',
-                name: 'Distribuição de Valores'
-            };
-            Plotly.react('graf-boxplot', [traceBox], {
-                title: 'Boxplot de Valores',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                responsive: true,
-                font: {
-                    color: '#f1f1f1'
-                }
-            });
-
-
-            // Gráfico de Pareto (valores ordenados + linha acumulada)
-            const valoresOrdenados = dados.map(d => d.Value).slice().sort((a, b) => b - a);
-            const somaTotal = valoresOrdenados.reduce((a, b) => a + b, 0);
-            let acumulado = 0;
-            const acumuladoPercent = valoresOrdenados.map(v => {
-                acumulado += v;
-                return (acumulado / somaTotal) * 100;
-            });
-
-            const traceBarPareto = {
-                x: valoresOrdenados.map((_, i) => i + 1),
-                y: valoresOrdenados,
-                type: 'bar',
-                name: 'Valores',
-                marker: {
-                    color: 'steelblue'
-                },
-                yaxis: 'y1'
-            };
-
-            const traceLinePareto = {
-                x: valoresOrdenados.map((_, i) => i + 1),
-                y: acumuladoPercent,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: 'Acumulado (%)',
-                line: {
-                    color: '#ffdd59',
-                    width: 3
-                },
-                yaxis: 'y2'
-            };
-
-            const layoutPareto = {
-                title: 'Gráfico de Pareto',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                font: {
-                    color: '#f1f1f1'
-                },
-                yaxis: {
-                    title: 'Valor',
-                    side: 'left',
-                    showgrid: false,
-                    zeroline: false,
-                },
-                yaxis2: {
-                    title: 'Acumulado (%)',
-                    side: 'right',
-                    overlaying: 'y',
-                    range: [0, 110],
-                    showgrid: false,
-                    zeroline: false,
-                    tickformat: '%',
-                },
-                legend: {
-                    x: 0.7,
-                    y: 1.1,
-                    bgcolor: 'rgba(0,0,0,0)'
-                }
-            };
-
-            Plotly.react('graf-pareto', [traceBarPareto, traceLinePareto], layoutPareto);
-
-
-            // Scatter simples
-            const traceScatter = {
-                x: dados.map(d => d.City),
-                y: dados.map(d => d.Value),
-                mode: 'markers',
-                type: 'scatter',
-                marker: {
-                    size: 10,
-                    color: 'lightgreen'
-                }
-            };
-            Plotly.react('graf-scatter', [traceScatter], {
-                title: 'Dispersão por Cidade',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                responsive: true,
-                font: {
-                    color: '#f1f1f1'
-                }
-            });
-
-            // Mapa (exemplo simples)
-            const latitudes = dados.map(d => d.Latitude).filter(v => v != null);
-            const longitudes = dados.map(d => d.Longitude).filter(v => v != null);
-            if (latitudes.length > 0 && longitudes.length > 0) {
-                const traceMapa = {
-                    type: 'scattergeo',
-                    mode: 'markers',
-                    lat: latitudes,
-                    lon: longitudes,
-                    marker: {
-                        size: 8,
-                        color: dados.map(d => d.Value),
-                        colorscale: 'Viridis',
-                        colorbar: {
-                            title: 'Valor'
-                        },
-                        reversescale: true
-                    },
-                    text: dados.map(d => `${d.City}: ${d.Value}`)
-                };
-                const layoutMapa = {
-                    title: 'Mapa de Poluição',
-                    geo: {
-                        scope: 'world',
-                        projection: {
-                            type: 'equirectangular'
-                        },
-                        bgcolor: 'rgba(0,0,0,0)'
-                    },
-                    plot_bgcolor: 'rgba(0,0,0,0)',
-                    paper_bgcolor: 'rgba(0,0,0,0)',
-                    responsive: true,
-                    font: {
-                        color: '#f1f1f1'
-                    }
-                };
-                Plotly.react('graf-mapa', [traceMapa], layoutMapa);
-            } else {
-                document.getElementById('graf-mapa').innerHTML = '<p>Sem dados geográficos para mapa</p>';
-            }
-
-            // Análise descritiva
-            const analise = await fetchJSON(`/analise_descritiva?pais=${encodeURIComponent(pais)}&poluente=${encodeURIComponent(poluente)}`);
-            document.getElementById('stats').textContent = `
+        // Análise descritiva
+        const analise = await fetchJSON(
+          `/analise_descritiva?pais=${encodeURIComponent(
+            pais
+          )}&poluente=${encodeURIComponent(poluente)}`
+        );
+        document.getElementById("stats").textContent = `
                     Média: ${analise.media.toFixed(2)},
                     Mediana: ${analise.mediana.toFixed(2)},
                     Desvio padrão: ${analise.std.toFixed(2)},
@@ -520,45 +598,93 @@
                     Registros: ${analise.count}
                 `;
 
-            if (poluente) {
-                const prob = await fetchJSON(`/probabilidade?poluente=${encodeURIComponent(poluente)}&limite=${limiteProb}&pais=${encodeURIComponent(pais)}&cidade=${encodeURIComponent(cidade)}&unidade=${encodeURIComponent(unidade)}`);
+        if (poluente) {
+          const prob = await fetchJSON(
+            `/probabilidade?poluente=${encodeURIComponent(
+              poluente
+            )}&limite=${limiteProb}&pais=${encodeURIComponent(
+              pais
+            )}&cidade=${encodeURIComponent(
+              cidade
+            )}&unidade=${encodeURIComponent(unidade)}`
+          );
 
-                
-                document.getElementById('prob').textContent = `
+          document.getElementById("prob").textContent = `
             Com base em ${prob.total_registros} registro(s),
-            a probabilidade de o valor de ${poluente} ultrapassar ${limiteProb} é de ${(prob.probabilidade_ultrapassar * 100).toFixed(2)}%.
+            a probabilidade de o valor de ${poluente} ultrapassar ${limiteProb} é de ${(
+            prob.probabilidade_ultrapassar * 100
+          ).toFixed(2)}%.
         `;
-            } else {
-                document.getElementById('prob').textContent = 'Selecione um poluente para calcular a probabilidade.';
-            }
+        } else {
+          document.getElementById("prob").textContent =
+            "Selecione um poluente para calcular a probabilidade.";
+        }
+      }
 
+     
+      
+
+      window.onload = () => {
+        popularSelects().then(() => {
+          if (!poluente) {
+            document.getElementById("stats").textContent = "Selecione um poluente.";
+            document.getElementById("prob").textContent = "Selecione um poluente para calcular a probabilidade.";
+            return;
+          }          
+          
+          salvarFiltros();
+          atualizarDashboard();
+        });
+
+        const btnLeft = document.getElementById("btn-left");
+        const btnRight = document.getElementById("btn-right");
+        const graficos = document.getElementById("graficos");
+        const container = document.getElementById("graficos-container");
+
+        const items = Array.from(graficos.children);
+        const totalItems = items.length;
+        let currentIndex = 0;
+
+        // Obter largura do item + gap
+        function getItemWidth() {
+          const style = getComputedStyle(items[0]);
+          const width = items[0].offsetWidth;
+          const gap = parseInt(getComputedStyle(graficos).gap) || 0;
+          return width + gap;
         }
 
-        window.onload = () => {
-            popularSelects().then(() => {
-                atualizarDashboard();
-            });
 
-            const btnLeft = document.getElementById('btn-left');
-            const btnRight = document.getElementById('btn-right');
-            const graficos = document.getElementById('graficos');
+        function scrollToIndex(index) {
+          const itemWidth = getItemWidth();
+          const containerWidth = container.offsetWidth;
 
-            btnLeft.addEventListener('click', () => {
-                graficos.scrollBy({
-                    left: -1900,
-                    behavior: 'smooth'
-                });
-            });
+          // Calcula o scrollLeft para centralizar o item
+          const scrollPosition =
+            itemWidth * index - (containerWidth - items[index].offsetWidth) / 2;
 
-            btnRight.addEventListener('click', () => {
-                graficos.scrollBy({
-                    left: 1900,
-                    behavior: 'smooth'
-                });
-            });
+          graficos.scrollTo({
+            left: scrollPosition,
+            behavior: "smooth",
+          });
         }
+
+        btnLeft.addEventListener("click", () => {
+          if (currentIndex > 0) {
+            currentIndex--;
+            scrollToIndex(currentIndex);
+          }
+        });
+
+        btnRight.addEventListener("click", () => {
+          if (currentIndex < totalItems - 1) {
+            currentIndex++;
+            scrollToIndex(currentIndex);
+          }
+        });
+
+        // Centraliza o primeiro gráfico ao carregar
+        scrollToIndex(currentIndex);
+      };
     </script>
-
-</body>
-
+  </body>
 </html>
