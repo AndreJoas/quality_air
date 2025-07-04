@@ -1,3 +1,5 @@
+# app.py
+
 from flask import Flask, jsonify, request, render_template
 import pandas as pd
 import numpy as np
@@ -6,11 +8,52 @@ from sklearn.neighbors import KNeighborsClassifier
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 
+
+import pycountry_convert as pc
+import pycountry
+
 app = Flask(__name__)
 
-# --- Carregar e tratar dados ---
+
+def obter_continente(pais_nome):
+    try:
+        codigo_alpha2 = pycountry.countries.lookup(pais_nome).alpha_2
+        continente_codigo = pc.country_alpha2_to_continent_code(codigo_alpha2)
+        continentes = {
+            'AF': 'África',
+            'NA': 'América do Norte',
+            'OC': 'Oceania',
+            'AN': 'Antártica',
+            'AS': 'Ásia',
+            'EU': 'Europa',
+            'SA': 'América do Sul'
+        }
+        return continentes.get(continente_codigo, 'Desconhecido')
+    except:
+        return 'Desconhecido'
+
+
+# === Limites de outliers por unidade e poluente ===
+
+limites_por_unidade = {
+    'µg/m³': {
+        'PM10': 500, 'NO': 500, 'PM2.5': 300, 'O3': 1000,
+        'CO': 3200, 'NO2': 3000, 'SO2': 2100, 'NOX': 800,
+        'BC': 20, 'PM1': 80,
+    },
+    'ppm': {
+        'PM10': 0.5, 'NO': 0.6, 'PM2.5': 0.2, 'O3': 0.2,
+        'CO': 40, 'NO2': 0.3, 'SO2': 0.2, 'NOX': 0.4,
+        'BC': 0.01, 'PM1': 0.15,
+    }
+}
+
 def carregar_e_tratar_dados():
+    print("\n📦 Carregando a base de dados...")
     df = pd.read_csv('data/world_air_quality.csv')
+
+    tamanho_original = df.shape[0]
+    print(f"🔢 Registros originais: {tamanho_original}")
 
     # Extrair latitude e longitude
     df[['Latitude', 'Longitude']] = df['Coordinates'].str.strip().str.split(',', expand=True)
@@ -20,29 +63,97 @@ def carregar_e_tratar_dados():
     # Limpeza inicial
     df.drop(columns=['Source Name', 'Location'], inplace=True)
 
-    # Preencher cidades nulas via KNN
+    # Preencher cidades nulas com KNN
     df_validos = df.dropna(subset=['City', 'Latitude', 'Longitude']).copy()
     df_nulos = df[df['City'].isnull() & df['Latitude'].notnull() & df['Longitude'].notnull()].copy()
 
-    le = LabelEncoder()
-    df_validos['City_Code'] = le.fit_transform(df_validos['City'])
-    knn = KNeighborsClassifier(n_neighbors=3)
-    knn.fit(df_validos[['Latitude', 'Longitude']], df_validos['City_Code'])
-
     if not df_nulos.empty:
+        print(f"🏙️ Preenchendo {len(df_nulos)} cidades ausentes com KNN...")
+        le = LabelEncoder()
+        df_validos['City_Code'] = le.fit_transform(df_validos['City'])
+        knn = KNeighborsClassifier(n_neighbors=3)
+        knn.fit(df_validos[['Latitude', 'Longitude']], df_validos['City_Code'])
         y_pred = knn.predict(df_nulos[['Latitude', 'Longitude']])
         df_nulos['City_Prevista'] = le.inverse_transform(y_pred)
         df.loc[df_nulos.index, 'City'] = df_nulos['City_Prevista']
 
-    # Limpar dados inválidos
+    # Limpeza: valores inválidos e duplicados
     df = df[df['Value'] >= 0].drop_duplicates()
     df['Last Updated'] = pd.to_datetime(df['Last Updated'], errors='coerce')
 
-    return df
+    print(f"✅ Base após preenchimento e limpeza inicial: {df.shape[0]} registros\n")
 
+    # =========== REMOÇÃO DE OUTLIERS ============
+    print("🚨 Removendo outliers por unidade e poluente...")
+    combined_mask = pd.Series([False] * len(df), index=df.index)
+    excluidos_por_unidade = {unidade: 0 for unidade in limites_por_unidade.keys()}
+
+    for unidade, limites in limites_por_unidade.items():
+        mask_unidade = pd.Series([False] * len(df), index=df.index)
+        for poluente, limite in limites.items():
+            mask = (
+                (df['Pollutant'] == poluente) &
+                (df['Value'] > limite) &
+                (df['Unit'] == unidade)
+            )
+            mask_unidade |= mask
+        combined_mask |= mask_unidade
+        excluidos_por_unidade[unidade] = mask_unidade.sum()
+
+    dados_excluidos = df.loc[combined_mask]
+    base_filtrada = df.loc[~combined_mask]
+
+    print(f"🗑️ Registros removidos no total: {len(dados_excluidos)}")
+    for unidade, qtd in excluidos_por_unidade.items():
+        print(f"   - Unidade '{unidade}': {qtd} removidos")
+
+    print(f"\n📊 Base final após limpeza de outliers: {base_filtrada.shape[0]} registros")
+    print("🔬 Poluentes presentes:", list(base_filtrada['Pollutant'].unique()))
+
+    # === Verificação final ===
+    print("\n🔎 Verificando valores ainda acima dos limites definidos...\n")
+    total_acima = 0
+    for unidade, limites in limites_por_unidade.items():
+        for poluente, limite in limites.items():
+            acima = base_filtrada[
+                (base_filtrada['Unit'] == unidade) &
+                (base_filtrada['Pollutant'] == poluente) &
+                (base_filtrada['Value'] > limite)
+            ]
+            if not acima.empty:
+                count = acima.shape[0]
+                total_acima += count
+                print(f"⚠️ {count} acima do limite: {poluente} ({unidade}) > {limite}")
+
+    if total_acima == 0:
+        print("✅ Nenhum valor acima dos limites foi encontrado. Limpeza eficaz!")
+    else:
+        print(f"🚨 Ainda há {total_acima} valores fora dos limites!")
+
+    return base_filtrada
+
+# Dados tratados disponíveis globalmente
 df_global = carregar_e_tratar_dados()
 
+
 # --- Rotas de frontend ---
+
+@app.route('/dados_por_continente')
+def dados_por_continente():
+    df = df_global.copy()
+
+    # Adiciona a coluna Continent se ainda não existir
+    if 'Continent' not in df.columns:
+        df['Continent'] = df['Country Label'].apply(obter_continente)
+
+    continente = request.args.get('continente')
+    if continente:
+        df = df[df['Continent'] == continente]
+
+    return jsonify(df.to_dict(orient='records'))
+
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -114,7 +225,7 @@ def dados():
     amostragem = int(request.args.get('amostragem', 100))
 
     df_filtrado = df_global.copy()
-
+    
     if pais:
         df_filtrado = df_filtrado[df_filtrado['Country Label'] == pais]
     if cidade:
