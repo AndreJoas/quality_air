@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Avaliação de Modelos de Qualidade do Ar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background-color: #f9f9f9;
+        }
+        
+        h1,
+        h2 {
+            color: #333;
+        }
+        
+        form {
+            margin-bottom: 20px;
+        }
+        
+        select,
+        button {
+            padding: 6px 12px;
+            font-size: 16px;
+        }
+        
+        table {
+            width: 100%;
+            margin-top: 15px;
+            border-collapse: collapse;
+            background-color: white;
+        }
+        
+        table,
+        th,
+        td {
+            border: 1px solid #ccc;
+        }
+        
+        th {
+            background-color: #f0f0f0;
+        }
+        
+        th,
+        td {
+            padding: 8px;
+            text-align: center;
+        }
+        
+        .matriz-container {
+            margin-bottom: 40px;
+        }
+        
+        .erro {
+            color: red;
+            font-weight: bold;
+        }
+        
+        .modelo-header {
+            margin-top: 40px;
+            color: #444;
+        }
+        
+        .voltar-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: #ffd700;
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            text-decoration: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .voltar-btn:hover {
+            background-color: #ffb700;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Avaliação de Modelos de Qualidade do Ar</h1>
+
+    <form method="get" action="/avaliar_modelos">
+        <label for="unidade">Selecione a Unidade:</label>
+        <select name="unidade" id="unidade" required>
+            <option value="">-- Escolha --</option>
+            <option value="µg/m³" {% if unidade == 'µg/m³' %}selected{% endif %}>µg/m³</option>
+            <option value="ppm" {% if unidade == 'ppm' %}selected{% endif %}>ppm</option>
+        </select>
+        <button type="submit">Avaliar Modelos</button>
+        <button><a href="/">← Voltar</a></button>
+    </form>
+
+    {% if erro %}
+    <p class="erro">{{ erro }}</p>
+    {% endif %} {% if resultados %}
+    <h2>🏆 Ranking dos Modelos</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Modelo</th>
+                <th>F1 Macro</th>
+                <th>Accuracy</th>
+                <th>Precision</th>
+                <th>Recall</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in resultados %}
+            <tr>
+                <td><strong>{{ r.modelo }}</strong></td>
+                <td>{{ r.f1 }}</td>
+                <td>{{ r.accuracy }}</td>
+                <td>{{ r.precision }}</td>
+                <td>{{ r.recall }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% for r in resultados %}
+    <div class="matriz-container">
+        <h3 class="modelo-header">🔎 Matriz de Confusão — {{ r.modelo }}</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Real \\ Previsto</th>
+                    {% for label in r.labels %}
+                    <th>{{ label }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in range(r.labels|length) %}
+                <tr>
+                    <th>{{ r.labels[i] }}</th>
+                    {% for j in range(r.labels|length) %}
+                    <td>{{ r.matriz[i][j] }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %} {% endif %}
+
+</body>
+
+</html>
