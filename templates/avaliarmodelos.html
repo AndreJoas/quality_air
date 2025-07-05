@@ -83,53 +83,170 @@
             background-color: #ffb700;
             transform: scale(1.05);
         }
+        
+        #loading {
+            display: none;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            font-size: 18px;
+            border: 2px solid #ccc;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            margin: 10px auto;
+            width: 40px;
+            height: 40px;
+            border: 5px solid #ccc;
+            border-top-color: #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+        
+        .flash-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        
+        .flash-error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        
+        .flash-warning {
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+        }
+        
+        .flash-info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+        
+        .download-btn {
+            margin: 10px 0;
+            padding: 8px 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .download-btn:hover {
+            background-color: #218838;
+        }
     </style>
+
+    <!-- Bibliotecas PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body>
 
     <h1>Avaliação de Modelos de Qualidade do Ar</h1>
 
-    <form method="get" action="/avaliar_modelos">
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
+    <div>
+        {% for category, message in messages %}
+        <div class="flash-message
+              {% if category == 'success' %}flash-success
+              {% elif category == 'error' %}flash-error
+              {% elif category == 'warning' %}flash-warning
+              {% else %}flash-info{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
+
+    <!-- Adicionar ao <form> do HTML existente -->
+    <form method="get" action="/avaliar_modelos" onsubmit="mostrarLoading()">
         <label for="unidade">Selecione a Unidade:</label>
         <select name="unidade" id="unidade" required>
-            <option value="">-- Escolha --</option>
-            <option value="µg/m³" {% if unidade == 'µg/m³' %}selected{% endif %}>µg/m³</option>
-            <option value="ppm" {% if unidade == 'ppm' %}selected{% endif %}>ppm</option>
-        </select>
+        <option value="">-- Escolha --</option>
+        <option value="µg/m³" {% if unidade == 'µg/m³' %}selected{% endif %}>µg/m³</option>
+        <option value="ppm" {% if unidade == 'ppm' %}selected{% endif %}>ppm</option>
+    </select>
+
+        <!-- Novo campo para Trials -->
+        <label for="trials">Nº de Otimizações (Trials):</label>
+        <input type="number" name="trials" id="trials" min="1" placeholder="7">
+        <button type="button" onclick="mostrarInfoTrials()">?</button>
+
         <button type="submit">Avaliar Modelos</button>
-        <button><a href="/">← Voltar</a></button>
+        <button><a href="/">&larr; Voltar</a></button>
     </form>
+
+    <!-- Card informativo -->
+    <div id="infoTrials" style="display:none; background:#fff3cd; border:1px solid #ffeeba; padding:10px; margin-top:10px; border-radius:5px;">
+        <strong>O que são Trials?</strong>
+        <p>O número de trials determina quantas combinações diferentes de hiperparâmetros serão testadas em cada modelo.</p>
+        <ul>
+            <li><strong>Menor valor</strong> = execução mais rápida, menos precisão.</li>
+            <li><strong>Maior valor</strong> = mais lento, maior chance de achar melhores resultados.</li>
+        </ul>
+        <p><strong>Dica:</strong> Se não souber, deixe vazio e usaremos 7 como padrão.</p>
+    </div>
+
+    <script>
+        function mostrarInfoTrials() {
+            const el = document.getElementById("infoTrials");
+            el.style.display = el.style.display === "none" ? "block" : "none";
+        }
+    </script>
+
 
     {% if erro %}
     <p class="erro">{{ erro }}</p>
     {% endif %} {% if resultados %}
-    <h2>🏆 Ranking dos Modelos</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Modelo</th>
-                <th>F1 Macro</th>
-                <th>Accuracy</th>
-                <th>Precision</th>
-                <th>Recall</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in resultados %}
-            <tr>
-                <td><strong>{{ r.modelo }}</strong></td>
-                <td>{{ r.f1 }}</td>
-                <td>{{ r.accuracy }}</td>
-                <td>{{ r.precision }}</td>
-                <td>{{ r.recall }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    {% for r in resultados %}
-    <div class="matriz-container">
+    <div id="ranking-tabela">
+        <h2>🏆 Ranking dos Modelos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Modelo</th>
+                    <th>F1 Macro</th>
+                    <th>Accuracy</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in resultados %}
+                <tr>
+                    <td><strong>{{ r.modelo }}</strong></td>
+                    <td>{{ r.f1 }}</td>
+                    <td>{{ r.accuracy }}</td>
+                    <td>{{ r.precision }}</td>
+                    <td>{{ r.recall }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <button class="download-btn" onclick="baixarTabelaPDF('ranking-tabela')">📥 Baixar PDF do Ranking</button> {% for r in resultados %}
+    <div class="matriz-container" id="matriz-{{ loop.index }}">
         <h3 class="modelo-header">🔎 Matriz de Confusão — {{ r.modelo }}</h3>
         <table>
             <thead>
@@ -151,8 +268,32 @@
                 {% endfor %}
             </tbody>
         </table>
+        <button class="download-btn" onclick="baixarTabelaPDF('matriz-{{ loop.index }}')">📥 Baixar PDF da Tabela</button>
     </div>
     {% endfor %} {% endif %}
+
+    <script>
+        function mostrarLoading() {
+            document.getElementById("loading").style.display = "block";
+        }
+
+        async function baixarTabelaPDF(idElemento) {
+            const {
+                jsPDF
+            } = window.jspdf;
+            const elemento = document.getElementById(idElemento);
+            const canvas = await html2canvas(elemento);
+            const imgData = canvas.toDataURL('image/png');
+
+            const pdf = new jsPDF();
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 10, pdfWidth, pdfHeight);
+            pdf.save(`${idElemento}.pdf`);
+        }
+    </script>
 
 </body>
 

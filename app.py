@@ -20,11 +20,12 @@ from imblearn.under_sampling import RandomUnderSampler
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split, StratifiedKFold
 import optuna
+from flask import flash
 import pycountry_convert as pc
 import pycountry
 
 app = Flask(__name__)
-
+app.secret_key = 's3cr3t_k3y_2231nskldasSD#$!@$%D'  # Chave secreta para sessões Flask
 
 def obter_continente(pais_nome):
     try:
@@ -204,21 +205,6 @@ df_global = carregar_e_tratar_dados()
 
 # --- Rotas de frontend ---
 
-@app.route('/dados_por_continente')
-def dados_por_continente():
-    df = df_global.copy()
-
-    # Adiciona a coluna Continent se ainda não existir
-    if 'Continent' not in df.columns:
-        df['Continent'] = df['Country Label'].apply(obter_continente)
-
-    continente = request.args.get('continente')
-    if continente:
-        df = df[df['Continent'] == continente]
-
-    return jsonify(df.to_dict(orient='records'))
-
-
 
 @app.route('/')
 def index():
@@ -227,22 +213,35 @@ def index():
 
 @app.route('/avaliar_modelos', methods=['GET', 'POST'])
 def avaliar_modelos():
+    import optuna
+    from sklearn.model_selection import cross_val_score
+    from flask import flash, redirect, url_for
+
     unidade = request.args.get('unidade')
 
     if unidade not in ['µg/m³', 'ppm']:
-        return render_template('avaliarmodelos.html', resultados=[], erro="Selecione uma unidade válida.")
+        flash("Selecione uma unidade válida.", "warning")
+        return redirect(url_for('avaliar_modelos'))
+
+    # 👇 Recupera o número de trials do formulário (ou usa 7 como padrão)
+    trials = request.args.get('trials')
+    try:
+        trials = int(trials)
+    except (ValueError, TypeError):
+        trials = 7  # valor padrão caso não seja informado ou inválido
 
     df = carregar_e_tratar_dados()
     df = df[df['Unit'] == unidade].copy()
     df['qualidade_ar'] = df.apply(lambda row: classificar_qualidade(row['Pollutant'], row['Value']), axis=1)
     df = df[df['qualidade_ar'] != 'Desconhecido']
 
-    # Balanceamento e treino/teste
     treino, teste = train_test_split(df, test_size=0.15, stratify=df['qualidade_ar'], random_state=42)
     base_balanceada = []
     for _, g in treino.groupby('qualidade_ar'):
         classe = g['qualidade_ar'].iloc[0]
+        tamanho_original = len(g)
         n_desejado = 4500 if classe in ['Péssima', 'Má', 'Inadequada'] else 1000
+        n_desejado = min(n_desejado, tamanho_original)
         g_resample = resample(g, replace=True, n_samples=n_desejado, random_state=42)
         base_balanceada.append(g_resample)
     base_balanceada = pd.concat(base_balanceada, ignore_index=True)
@@ -262,65 +261,148 @@ def avaliar_modelos():
     LIMITE_POR_CLASSE = 8000
     k_neighbors_value = 1
 
-    # XGBoost exige LabelEncoder
     label_encoder = LabelEncoder()
     y_train_encoded = label_encoder.fit_transform(y_train)
     y_test_encoded = label_encoder.transform(y_test_real)
 
-    modelos = {
-        "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=42),
-        "KNN": KNeighborsClassifier(n_neighbors=5),
-        "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', random_state=42),
-        "Logistic Regression": LogisticRegression(max_iter=1000, class_weight='balanced', random_state=42),
-    }
+    def pipeline_with_model(model, y_encoded=True):
+        y_base = y_train_encoded if y_encoded else y_train
+        class_counts = pd.Series(y_base).value_counts()
+        undersample_strategy = {cls: min(LIMITE_POR_CLASSE, count) for cls, count in class_counts.items() if count > LIMITE_POR_CLASSE}
+        oversample_strategy = {cls: LIMITE_POR_CLASSE for cls, count in class_counts.items() if count < LIMITE_POR_CLASSE}
 
-    resultados = []
-    for nome_modelo, modelo in modelos.items():
-        if nome_modelo == "XGBoost":
-            y_treino_pipeline = y_train_encoded
-            y_teste_pipeline = y_test_encoded
-        else:
-            y_treino_pipeline = y_train
-            y_teste_pipeline = y_test_real
-
-        pipeline = ImbPipeline([
+        return ImbPipeline([
             ('preprocessador', preprocessador),
-            ('undersampler', RandomUnderSampler(
-                sampling_strategy={cls: min(LIMITE_POR_CLASSE, count) for cls, count in pd.Series(y_treino_pipeline).value_counts().items()},
-                random_state=42)),
-            ('smote', SMOTE(
-                random_state=42,
-                k_neighbors=k_neighbors_value,
-                sampling_strategy={cls: LIMITE_POR_CLASSE for cls in pd.Series(y_treino_pipeline).value_counts().index})),
-            ('modelo', modelo)
+            ('undersampler', RandomUnderSampler(sampling_strategy=undersample_strategy, random_state=42)),
+            ('smote', SMOTE(random_state=42, k_neighbors=k_neighbors_value, sampling_strategy=oversample_strategy)),
+            ('modelo', model)
         ])
 
-        pipeline.fit(X_train, y_treino_pipeline)
-        y_pred = pipeline.predict(X_test)
+    resultados = []
 
-        if nome_modelo == "XGBoost":
-            y_pred = label_encoder.inverse_transform(y_pred)
-            y_teste_pipeline = label_encoder.inverse_transform(y_teste_pipeline)
+    # === XGBoost ===
+    def objective_xgb(trial):
+        params = {
+            'n_estimators': trial.suggest_int('n_estimators', 50, 300),
+            'max_depth': trial.suggest_int('max_depth', 3, 12),
+            'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
+            'subsample': trial.suggest_float('subsample', 0.5, 1.0),
+            'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
+            'use_label_encoder': False,
+            'eval_metric': 'mlogloss',
+            'random_state': 42
+        }
+        model = XGBClassifier(**params)
+        pipe = pipeline_with_model(model)
+        return cross_val_score(pipe, X_train, y_train_encoded, cv=3, scoring='f1_macro').mean()
 
-        acc = accuracy_score(y_teste_pipeline, y_pred)
-        prec = precision_score(y_teste_pipeline, y_pred, average='macro', zero_division=0)
-        rec = recall_score(y_teste_pipeline, y_pred, average='macro', zero_division=0)
-        f1 = f1_score(y_teste_pipeline, y_pred, average='macro', zero_division=0)
+    study_xgb = optuna.create_study(direction='maximize')
+    study_xgb.optimize(objective_xgb, n_trials=trials, catch=(ValueError,))
+    best_xgb = XGBClassifier(**study_xgb.best_params, use_label_encoder=False, eval_metric='mlogloss', random_state=42)
+    pipe_xgb = pipeline_with_model(best_xgb)
+    pipe_xgb.fit(X_train, y_train_encoded)
+    y_pred = label_encoder.inverse_transform(pipe_xgb.predict(X_test))
 
-        cm = confusion_matrix(y_teste_pipeline, y_pred).tolist()
+    resultados.append({
+        'modelo': "XGBoost",
+        'accuracy': round(accuracy_score(y_test_real, y_pred), 4),
+        'precision': round(precision_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'recall': round(recall_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'f1': round(f1_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'matriz': confusion_matrix(y_test_real, y_pred).tolist(),
+        'labels': sorted(y_test_real.unique().tolist())
+    })
 
-        resultados.append({
-            'modelo': nome_modelo,
-            'accuracy': round(acc, 4),
-            'precision': round(prec, 4),
-            'recall': round(rec, 4),
-            'f1': round(f1, 4),
-            'matriz': cm,
-            'labels': sorted(y_test_real.unique().tolist())
-        })
+    # === Random Forest ===
+    def objective_rf(trial):
+        params = {
+            'n_estimators': trial.suggest_int('n_estimators', 50, 300),
+            'max_depth': trial.suggest_int('max_depth', 5, 30),
+            'min_samples_split': trial.suggest_int('min_samples_split', 2, 10),
+            'class_weight': 'balanced',
+            'random_state': 42
+        }
+        model = RandomForestClassifier(**params)
+        pipe = pipeline_with_model(model, y_encoded=False)
+        return cross_val_score(pipe, X_train, y_train, cv=3, scoring='f1_macro').mean()
 
+    study_rf = optuna.create_study(direction='maximize')
+    study_rf.optimize(objective_rf, n_trials=trials, catch=(ValueError,))
+    best_rf = RandomForestClassifier(**study_rf.best_params, class_weight='balanced', random_state=42)
+    pipe_rf = pipeline_with_model(best_rf, y_encoded=False)
+    pipe_rf.fit(X_train, y_train)
+    y_pred = pipe_rf.predict(X_test)
+
+    resultados.append({
+        'modelo': "Random Forest",
+        'accuracy': round(accuracy_score(y_test_real, y_pred), 4),
+        'precision': round(precision_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'recall': round(recall_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'f1': round(f1_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'matriz': confusion_matrix(y_test_real, y_pred).tolist(),
+        'labels': sorted(y_test_real.unique().tolist())
+    })
+
+    # === KNN ===
+    def objective_knn(trial):
+        params = {'n_neighbors': trial.suggest_int('n_neighbors', 3, 15)}
+        model = KNeighborsClassifier(**params)
+        pipe = pipeline_with_model(model, y_encoded=False)
+        return cross_val_score(pipe, X_train, y_train, cv=3, scoring='f1_macro').mean()
+
+    study_knn = optuna.create_study(direction='maximize')
+    study_knn.optimize(objective_knn, n_trials=trials)
+    best_knn = KNeighborsClassifier(**study_knn.best_params)
+    pipe_knn = pipeline_with_model(best_knn, y_encoded=False)
+    pipe_knn.fit(X_train, y_train)
+    y_pred = pipe_knn.predict(X_test)
+
+    resultados.append({
+        'modelo': "KNN",
+        'accuracy': round(accuracy_score(y_test_real, y_pred), 4),
+        'precision': round(precision_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'recall': round(recall_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'f1': round(f1_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'matriz': confusion_matrix(y_test_real, y_pred).tolist(),
+        'labels': sorted(y_test_real.unique().tolist())
+    })
+
+    # === Logistic Regression ===
+    def objective_lr(trial):
+        params = {
+            'C': trial.suggest_float('C', 0.01, 10.0),
+            'class_weight': 'balanced',
+            'max_iter': 1000,
+            'solver': 'lbfgs',
+            'random_state': 42
+        }
+        model = LogisticRegression(**params)
+        pipe = pipeline_with_model(model, y_encoded=False)
+        return cross_val_score(pipe, X_train, y_train, cv=3, scoring='f1_macro').mean()
+
+    study_lr = optuna.create_study(direction='maximize')
+    study_lr.optimize(objective_lr, n_trials=trials, catch=(ValueError,))
+    best_lr = LogisticRegression(**study_lr.best_params)
+    best_lr.set_params(class_weight='balanced', max_iter=1000, random_state=42)
+    pipe_lr = pipeline_with_model(best_lr, y_encoded=False)
+    pipe_lr.fit(X_train, y_train)
+    y_pred = pipe_lr.predict(X_test)
+
+    resultados.append({
+        'modelo': "Logistic Regression",
+        'accuracy': round(accuracy_score(y_test_real, y_pred), 4),
+        'precision': round(precision_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'recall': round(recall_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'f1': round(f1_score(y_test_real, y_pred, average='macro', zero_division=0), 4),
+        'matriz': confusion_matrix(y_test_real, y_pred).tolist(),
+        'labels': sorted(y_test_real.unique().tolist())
+    })
+
+    flash("✅ Avaliação dos modelos concluída com sucesso!", "success")
     ranking = sorted(resultados, key=lambda x: x['f1'], reverse=True)
     return render_template('avaliarmodelos.html', resultados=ranking, unidade=unidade)
+
+
 
 
 @app.route('/teste_t_rota')
