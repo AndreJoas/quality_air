@@ -47,10 +47,12 @@
         
         #filtros-info-container {
             display: flex;
-            max-width: 980px;
-            width: 100%;
-            gap: 40px;
+            max-width: 100%%;
+            width: 80%;
+            gap: 14rem;
             margin-bottom: 40px;
+            font-size: 1.75rem;
+            font-weight: 700;
         }
         
         #filtros {
@@ -72,7 +74,7 @@
             border: none;
             background-color: rgba(255, 255, 255, 0.15);
             color: #f1f1f1;
-            font-size: 1rem;
+            font-size: 1.2rem;
             box-shadow: inset 0 0 6px #00000044;
             transition: background-color 0.3s ease, box-shadow 0.3s ease;
             appearance: none;
@@ -91,7 +93,7 @@
         button {
             grid-column: 1 / -1;
             padding: 14px 0;
-            font-size: 1.15rem;
+            font-size: 1.3rem;
             font-weight: 700;
             border-radius: 10px;
             border: none;
@@ -114,7 +116,7 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-            font-size: 0.9rem;
+            font-size: 1.2rem;
             line-height: 1.5;
             max-height: 600px;
             overflow-y: auto;
@@ -259,15 +261,56 @@
                 left: -100%;
             }
         }
+        #atalhos-links {
+            display: flex;
+            gap: 20px;
+            margin: 25px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .link-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffdd59;
+            padding: 12px 22px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            text-decoration: none;
+            transition: background 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            border: 2px solid #ffdd59;
+        }
+        
+        .link-btn:hover {
+            background: #ffd700;
+            color: #182848;
+            transform: scale(1.05);
+        }
+        
+        .link-btn.destaque {
+            background: #ffdd59;
+            color: #182848;
+        }
+        
+        .link-btn.destaque:hover {
+            background: #182848;   /* fundo azul escuro */
+            color: #ffdd59;         /* texto amarelo */
+            transform: scale(1.05);
+        }
+       
     </style>
 </head>
 
 <body>
     <h1>Dashboard Qualidade do Ar</h1>
-    <p><a href="/teste_t_rota">Ir para página do Teste T</a></p>
-    <a href="/modelos_classificacao">
-        <button style="padding: 10px 20px; font-size: 16px;">Classificação de Modelos</button>
-    </a>
+    <div id="atalhos-links">
+        <a href="/teste_t_rota" class="link-btn">Ir para página do Teste T</a>
+        <a href="/modelos_classificacao" class="link-btn destaque">
+            Classificação de Modelos
+        </a>
+    </div>
+    
 
     <div id="filtros-info-container">
         <div id="filtros">
