@@ -253,7 +253,7 @@ if __name__ == "__main__":
 
 
     study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=10)
+    study.optimize(objective, n_trials=2)
 
     print("🔍 Melhores parâmetros encontrados:")
     print(study.best_params)
@@ -303,6 +303,217 @@ if __name__ == "__main__":
     plt.ylabel("Real")
     plt.show()
 
-    print("🔍 Amostra da base de teste com previsões:")
-    print(teste_sem_rotulo_final[['City', 'Pollutant', 'Value', 'qualidade_ar_prevista']].head())
+
+
+
+
+
+    # print("🔍 Amostra da base de teste com previsões:")
+    # print(teste_sem_rotulo_final[['City', 'Pollutant', 'Value', 'qualidade_ar_prevista']].head())
+
+    # ===================== FUNÇÕES PARA TESTES ESTATÍSTICOS =====================
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+from scipy.stats import norm
+
+def teste_normalidade(dados):
+    n = len(dados)
+    if n < 30:
+        stat, p = stats.shapiro(dados)
+        teste = "Shapiro-Wilk"
+        justificativa = "n < 30"
+    elif 30 <= n <= 100:
+        stat, p = stats.shapiro(dados)
+        teste = "Shapiro-Wilk (preferido)"
+        justificativa = "30 ≤ n ≤ 100"
+    else:
+        stat, p = stats.normaltest(dados)
+        teste = "D'Agostino-Pearson"
+        justificativa = "n > 100"
+    return teste, p, justificativa
+
+def escolher_teste_e_calcular(amostra1, amostra2, alpha=0.05):
+    # Normalidade
+    teste1, p1, just1 = teste_normalidade(amostra1)
+    teste2, p2, just2 = teste_normalidade(amostra2)
+
+    normal1 = p1 >= alpha
+    normal2 = p2 >= alpha
+
+    print("\n### Teste de Normalidade")
+    print(f"Amostra 1 - Teste: {teste1} ({just1}), p-valor = {p1:.4f} → {'Normal' if normal1 else 'Não normal'}")
+    print(f"Amostra 2 - Teste: {teste2} ({just2}), p-valor = {p2:.4f} → {'Normal' if normal2 else 'Não normal'}")
+
+    media1, std1 = np.mean(amostra1), np.std(amostra1, ddof=1)
+    media2, std2 = np.mean(amostra2), np.std(amostra2, ddof=1)
+
+    z_valor = None
+    if normal1 and normal2:
+        stat_lev, p_lev = stats.levene(amostra1, amostra2)
+        variancias_iguais = p_lev >= alpha
+        if variancias_iguais:
+            teste_usado = "t-Student (variâncias iguais)"
+            justificativa = "As duas amostras são normais e Levene indicou variâncias iguais"
+            stat, p = stats.ttest_ind(amostra1, amostra2, equal_var=True)
+        else:
+            teste_usado = "t-Welch (variâncias diferentes)"
+            justificativa = "As duas amostras são normais e Levene indicou variâncias diferentes"
+            stat, p = stats.ttest_ind(amostra1, amostra2, equal_var=False)
+        z_valor = stat
+    else:
+        teste_usado = "Mann-Whitney (não paramétrico)"
+        justificativa = "Pelo menos uma das amostras não segue distribuição normal"
+        stat, p = stats.mannwhitneyu(amostra1, amostra2, alternative='two-sided')
+
+    decisao = "Rejeita H₀" if p < alpha else "Não rejeita H₀"
+    ha_diferenca = "Há diferença significativa entre os grupos." if p < alpha else "Não há diferença significativa entre os grupos."
+
+    print("\n### Teste de Hipóteses")
+    print(f"Teste escolhido: {teste_usado}")
+    print(f"Justificativa: {justificativa}")
+    print("\nHipóteses:")
+    print("H₀: As médias dos dois grupos são iguais")
+    print("H₁: As médias dos dois grupos são diferentes")
+    print(f"\nEstatística de teste: {stat:.4f}")
+    if z_valor is not None:
+        print(f"Valor Z aproximado: {z_valor:.4f}")
+    print(f"p-valor: {p:.4f}")
+    print(f"Decisão: {decisao}")
+    print(f"{ha_diferenca}")
+    print(f"\nMédia amostra 1: {media1:.2f}")
+    print(f"Média amostra 2: {media2:.2f}")
+
+    # GRÁFICOS
+    plt.figure(figsize=(12, 5))
+
+    # Subplot 1: Histogramas
+    plt.subplot(1, 2, 1)
+    bins = 15
+    plt.hist(amostra1, bins=bins, alpha=0.5, color='blue', density=True, label='Amostra 1')
+    plt.hist(amostra2, bins=bins, alpha=0.5, color='orange', density=True, label='Amostra 2')
+
+    intervalo = np.linspace(
+        np.min(np.concatenate([amostra1, amostra2])) - 5,
+        np.max(np.concatenate([amostra1, amostra2])) + 5,
+        200
+    )
+    y1 = stats.norm.pdf(intervalo, media1, std1)
+    y2 = stats.norm.pdf(intervalo, media2, std2)
+    plt.plot(intervalo, y1, color='blue', linestyle='--')
+    plt.plot(intervalo, y2, color='orange', linestyle='--')
+    plt.axvline(media1, color='blue', linestyle=':', label=f'Média 1: {media1:.2f}')
+    plt.axvline(media2, color='orange', linestyle=':', label=f'Média 2: {media2:.2f}')
+    plt.title('Distribuições das Amostras')
+    plt.xlabel('Valor')
+    plt.ylabel('Densidade')
+    plt.legend()
+
+    # Subplot 2: Distribuição Z
+    plt.subplot(1, 2, 2)
+    x = np.linspace(-4, 4, 500)
+    y = norm.pdf(x, 0, 1)
+    plt.plot(x, y, label='N(0,1)', color='gray')
+    if z_valor is not None:
+        plt.fill_between(x, y, where=(x <= -abs(z_valor)) | (x >= abs(z_valor)),
+                         color='red', alpha=0.3, label=f'Zona p-valor (|Z| ≥ {abs(z_valor):.2f})')
+        plt.axvline(z_valor, color='red', linestyle='--', label=f'Z calc: {z_valor:.2f}')
+    z_crit = stats.norm.ppf(1 - alpha/2)
+    plt.axvline(-z_crit, color='black', linestyle=':', label=f'Z crítico: ±{z_crit:.2f}')
+    plt.axvline(z_crit, color='black', linestyle=':')
+    plt.title('Distribuição Normal Padrão (Z)')
+    plt.xlabel('Z')
+    plt.ylabel('Densidade')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+
+
+
+# ===================== ENTRADA INTERATIVA POR PAÍS =====================
+
+print("\n🧪 Teste Estatístico Interativo entre Países")
+
+# Mostrar poluentes disponíveis
+poluentes_disponiveis = base_balanceada['Pollutant'].value_counts().index.tolist()
+print("\n📋 Poluentes disponíveis:")
+for i, pol in enumerate(poluentes_disponiveis, 1):
+    print(f"{i}. {pol}")
+poluente_escolhido = input("\nDigite o nome do poluente para análise (ex: PM10): ").strip()
+
+# Mostrar países disponíveis com esse poluente
+paises_disponiveis = base_balanceada[base_balanceada['Pollutant'] == poluente_escolhido]['Country Label'].value_counts().index.tolist()
+
+if len(paises_disponiveis) < 2:
+    print("❌ Poluente não encontrado ou com menos de dois países disponíveis.")
+else:
+    print("\n🌍 Países disponíveis para esse poluente:")
+    for i, pais in enumerate(paises_disponiveis[:10], 1):
+        print(f"{i}. {pais}")
+
+    pais1 = input("\nDigite o nome do primeiro país: ").strip()
+    pais2 = input("Digite o nome do segundo país: ").strip()
+
+    amostra1 = base_balanceada[
+        (base_balanceada['Pollutant'] == poluente_escolhido) &
+        (base_balanceada['Country Label'] == pais1)
+    ]['Value'].dropna()
+
+    amostra2 = base_balanceada[
+        (base_balanceada['Pollutant'] == poluente_escolhido) &
+        (base_balanceada['Country Label'] == pais2)
+    ]['Value'].dropna()
+
+    if len(amostra1) >= 8 and len(amostra2) >= 8:
+        print(f"\n🔬 Iniciando teste entre '{pais1}' e '{pais2}' para o poluente '{poluente_escolhido}'")
+        escolher_teste_e_calcular(amostra1.values, amostra2.values)
+    else:
+        print(f"❌ Amostras insuficientes: {len(amostra1)} e {len(amostra2)} registros encontrados.")
+
+
+
+# # ===================== ENTRADA INTERATIVA cidade =====================
+
+# print("\n🧪 Teste Estatístico Interativo")
+
+# # Mostrar poluentes disponíveis
+# poluentes_disponiveis = base_balanceada['Pollutant'].value_counts().index.tolist()
+# print("\n📋 Poluentes disponíveis:")
+# for i, pol in enumerate(poluentes_disponiveis, 1):
+#     print(f"{i}. {pol}")
+# poluente_escolhido = input("\nDigite o nome do poluente para análise (ex: PM10): ").strip()
+
+# # Mostrar cidades com esse poluente
+# cidades_disponiveis = base_balanceada[base_balanceada['Pollutant'] == poluente_escolhido]['City'].value_counts().index.tolist()
+
+# if len(cidades_disponiveis) < 2:
+#     print("❌ Poluente não encontrado ou com menos de duas cidades disponíveis.")
+# else:
+#     print("\n🌆 Cidades disponíveis para esse poluente:")
+#     for i, cidade in enumerate(cidades_disponiveis[:10], 1):
+#         print(f"{i}. {cidade}")
+
+#     cidade1 = input("\nDigite o nome da primeira cidade: ").strip()
+#     cidade2 = input("Digite o nome da segunda cidade: ").strip()
+
+#     amostra1 = base_balanceada[
+#         (base_balanceada['Pollutant'] == poluente_escolhido) &
+#         (base_balanceada['City'] == cidade1)
+#     ]['Value'].dropna()
+
+#     amostra2 = base_balanceada[
+#         (base_balanceada['Pollutant'] == poluente_escolhido) &
+#         (base_balanceada['City'] == cidade2)
+#     ]['Value'].dropna()
+
+#     if len(amostra1) >= 8 and len(amostra2) >= 8:
+#         print(f"\n🔬 Iniciando teste entre '{cidade1}' e '{cidade2}' para o poluente '{poluente_escolhido}'")
+#         escolher_teste_e_calcular(amostra1.values, amostra2.values)
+#     else:
+#         print(f"❌ Amostras insuficientes: {len(amostra1)} e {len(amostra2)} registros encontrados.")
+
 

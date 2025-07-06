@@ -1,9 +1,13 @@
 # app.py
 
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_file
 import pandas as pd
 import numpy as np
-
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import io
+from scipy.stats import norm
 from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.neighbors import KNeighborsClassifier
@@ -412,6 +416,7 @@ def test_t():
 @app.route('/global')
 def global2():
     return render_template('globa.html')
+
 @app.route('/modelos_classificacao')
 def modelos_classificacao():
     return render_template('avaliarmodelos.html')
@@ -551,7 +556,6 @@ def probabilidade():
 
 
 
-# --- Teste T com melhorias ---
 @app.route('/teste_t')
 def teste_t():
     pais1 = request.args.get('pais1')
@@ -562,7 +566,7 @@ def teste_t():
     df1 = df_global[(df_global['Country Label'] == pais1) & (df_global['Pollutant'] == poluente)].copy()
     df2 = df_global[(df_global['Country Label'] == pais2) & (df_global['Pollutant'] == poluente)].copy()
 
-    if limite is not None:
+    if limite:
         df1 = df1[df1['Value'] <= limite]
         df2 = df2[df2['Value'] <= limite]
 
@@ -582,6 +586,92 @@ def teste_t():
         'media_pais1': df1['Value'].mean(),
         'media_pais2': df2['Value'].mean()
     })
+
+@app.route('/grafico_t')
+def grafico_t():
+    pais1 = request.args.get('pais1')
+    pais2 = request.args.get('pais2')
+    poluente = request.args.get('poluente')
+
+    df1 = df_global[(df_global['Country Label'] == pais1) & (df_global['Pollutant'] == poluente)]
+    df2 = df_global[(df_global['Country Label'] == pais2) & (df_global['Pollutant'] == poluente)]
+
+    amostra1 = df1['Value'].dropna()
+    amostra2 = df2['Value'].dropna()
+
+    media1, std1 = np.mean(amostra1), np.std(amostra1, ddof=1)
+    media2, std2 = np.mean(amostra2), np.std(amostra2, ddof=1)
+
+    plt.figure(figsize=(10, 5))
+    bins = 15
+    plt.hist(amostra1, bins=bins, alpha=0.5, color='blue', density=True, label=pais1)
+    plt.hist(amostra2, bins=bins, alpha=0.5, color='orange', density=True, label=pais2)
+
+    intervalo = np.linspace(min(amostra1.min(), amostra2.min()), max(amostra1.max(), amostra2.max()), 300)
+    plt.plot(intervalo, norm.pdf(intervalo, media1, std1), color='blue', linestyle='--')
+    plt.plot(intervalo, norm.pdf(intervalo, media2, std2), color='orange', linestyle='--')
+    plt.axvline(media1, color='blue', linestyle=':', label=f'Média {pais1}: {media1:.2f}')
+    plt.axvline(media2, color='orange', linestyle=':', label=f'Média {pais2}: {media2:.2f}')
+
+    plt.title(f'Distribuição dos Valores - {poluente}')
+    plt.xlabel('Valor')
+    plt.ylabel('Densidade')
+    plt.legend()
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    return send_file(buf, mimetype='image/png')
+
+@app.route('/grafico_z')
+def grafico_z():
+    pais1 = request.args.get('pais1')
+    pais2 = request.args.get('pais2')
+    poluente = request.args.get('poluente')
+
+    df1 = df_global[(df_global['Country Label'] == pais1) & (df_global['Pollutant'] == poluente)]
+    df2 = df_global[(df_global['Country Label'] == pais2) & (df_global['Pollutant'] == poluente)]
+
+    amostra1 = df1['Value'].dropna()
+    amostra2 = df2['Value'].dropna()
+
+    if len(amostra1) < 2 or len(amostra2) < 2:
+        return "Amostras insuficientes", 400
+
+    # Teste t de Welch
+    stat, p_val = stats.ttest_ind(amostra1, amostra2, equal_var=False)
+    z_valor = stat  # aproximação da estatística t como z
+
+    plt.figure(figsize=(8, 5))
+
+    x = np.linspace(-4, 4, 500)
+    y = norm.pdf(x)
+
+    plt.plot(x, y, label='Distribuição Normal Padrão', color='gray')
+
+    # Região crítica
+    alpha = 0.05
+    z_crit = stats.norm.ppf(1 - alpha / 2)
+
+    plt.fill_between(x, y, where=(x <= -z_crit) | (x >= z_crit), color='red', alpha=0.3,
+                     label=f'Região crítica (|z| > {z_crit:.2f})')
+
+    plt.axvline(z_valor, color='red', linestyle='--', label=f'Estatística Z ≈ {z_valor:.2f}')
+    plt.axvline(-z_crit, color='black', linestyle=':', label=f'Z crítico: ±{z_crit:.2f}')
+    plt.axvline(z_crit, color='black', linestyle=':')
+
+    plt.title('Distribuição Z e Região Crítica')
+    plt.xlabel('Z')
+    plt.ylabel('Densidade')
+    plt.legend()
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    return send_file(buf, mimetype='image/png')
+
 
 # --- Correlação entre poluentes ---
 @app.route('/correlacao')
