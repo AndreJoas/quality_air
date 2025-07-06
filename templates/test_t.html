@@ -4,29 +4,39 @@
 <head>
     <meta charset="UTF-8" />
     <title>Teste T - Qualidade do Ar</title>
-    <link rel="stylesheet" href="style.css" />
-
     <style>
-        /* Melhor organização visual e responsividade simples */
-        
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f8fa;
             color: #333;
-            margin: 40px auto;
-            max-width: 700px;
-            padding: 0 20px;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            gap: 30px;
         }
         
         h1 {
-            text-align: center;
             color: #1e3a8a;
-            margin-bottom: 40px;
-            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0;
         }
         
-        .form-container {
-            background: #ffffff;
+        .container-principal {
+            width: 80vw;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        .form-container,
+        .resultado-container {
+            background: #fff;
             padding: 25px 30px;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(30, 58, 138, 0.2);
@@ -34,6 +44,23 @@
             grid-template-columns: 1fr 1fr;
             gap: 20px 30px;
             align-items: center;
+            box-sizing: border-box;
+        }
+        
+        button {
+            grid-column: 1 / -1;
+            padding: 12px;
+            background-color: #2563eb;
+            color: white;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #1e40af;
         }
         
         label {
@@ -47,101 +74,184 @@
             border: 1.5px solid #cbd5e1;
             border-radius: 6px;
             font-size: 1rem;
-            transition: border-color 0.3s ease;
             width: 100%;
-        }
-        
-        select:focus,
-        input[type="number"]:focus {
-            outline: none;
-            border-color: #2563eb;
-            box-shadow: 0 0 5px rgba(37, 99, 235, 0.5);
-        }
-        
-        button {
-            grid-column: 1 / -1;
-            padding: 12px;
-            background-color: #2563eb;
-            color: white;
-            font-weight: 700;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            transition: background-color 0.3s ease;
-            margin-top: 10px;
-        }
-        
-        button:hover {
-            background-color: #1e40af;
+            box-sizing: border-box;
         }
         
         .resultado-container {
-            margin-top: 40px;
-            background: #ffffff;
-            padding: 20px 25px;
-            border-radius: 10px;
+            grid-template-columns: 1fr;
+            min-height: 420px;
             box-shadow: 0 4px 8px rgba(30, 58, 138, 0.15);
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: #1f2937;
         }
         
-        .resultado-container strong {
+        .resultado-container h2 {
+            grid-column: 1 / -1;
+            margin-top: 0;
             color: #1e3a8a;
         }
-        /* Responsividade para telas pequenas */
         
-        @media (max-width: 500px) {
+        #resultado-texto {
+            grid-column: 1 / -1;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+        
+        .grafico-container {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            min-height: 220px;
+        }
+        /* GRÁFICOS AMPLIADOS */
+        
+        .grafico-container img {
+            max-width: 700px;
+            /* ampliado */
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #fefefe;
+            display: block;
+            height: auto;
+        }
+        
+        #btn-grafico-z {
+            margin-top: 15px;
+            background-color: #4ade80;
+            color: #065f46;
+            font-weight: 700;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            padding: 12px;
+            width: 100%;
+            max-width: 250px;
+            justify-self: center;
+            transition: background-color 0.3s ease;
+        }
+        
+        #btn-grafico-z:hover {
+            background-color: #16a34a;
+            color: white;
+        }
+        /* Modal styles - tamanho maior para gráfico */
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            /* um pouco menor para caber mais */
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 900px;
+            /* maior largura */
+            box-shadow: 0 0 10px #0003;
+            position: relative;
+        }
+        
+        #grafico-t {
+            max-width: 900px;
+            width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #fefefe;
+            display: block;
+        }
+        
+        .close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .modal-content img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        @media (max-width: 700px) {
             .form-container {
                 grid-template-columns: 1fr;
+            }
+            .resultado-container {
+                min-height: auto;
+            }
+            #btn-grafico-z {
+                max-width: 100%;
+            }
+            .grafico-container img {
+                max-width: 100%;
+            }
+            .modal-content {
+                max-width: 95%;
+                margin: 10% auto;
             }
         }
     </style>
 </head>
 
 <body>
-
     <h1>Teste T - Comparação entre Países</h1>
 
-    <div id="form-teste-t" class="form-container">
-        <label for="pais1-select">País 1:</label>
-        <select id="pais1-select">
-            <option value="">Selecione o País 1</option>
-        </select>
+    <div class="container-principal">
+        <div id="form-teste-t" class="form-container">
+            <label for="pais1-select">País 1:</label>
+            <select id="pais1-select">
+                <option value="">Selecione o País 1</option>
+            </select>
 
-        <label for="pais2-select">País 2:</label>
-        <select id="pais2-select">
-            <option value="">Selecione o País 2</option>
-        </select>
+            <label for="pais2-select">País 2:</label>
+            <select id="pais2-select">
+                <option value="">Selecione o País 2</option>
+            </select>
 
-        <label for="poluente-select">Poluente:</label>
-        <select id="poluente-select">
-            <option value="">Selecione o Poluente</option>
-        </select>
+            <label for="poluente-select">Poluente:</label>
+            <select id="poluente-select">
+                <option value="">Selecione o Poluente</option>
+            </select>
 
-        <label for="limite-teste">Limite Valor (opcional):</label>
-        <input type="number" id="limite-teste" placeholder="Ex: 50" min="0" step="any" />
+            <label for="limite-teste">Limite Valor (opcional):</label>
+            <input type="number" id="limite-teste" placeholder="Ex: 50" min="0" step="any" />
 
-        <button id="btn-calcular">Calcular Teste T</button>
+            <button id="btn-calcular">Calcular Teste T</button>
+        </div>
+
+        <div id="resultado-teste-t" class="resultado-container">
+            <h2>Resultado</h2>
+            <p id="resultado-texto">Preencha os campos e clique em Calcular.</p>
+
+            <div id="container-grafico-t" class="grafico-container" style="display:none;">
+                <img id="grafico-t" src="" alt="Gráfico do Teste T" />
+            </div>
+
+            <button id="btn-grafico-z">Mostrar Gráfico Z</button>
+        </div>
     </div>
 
-    <div id="resultado-teste-t" class="resultado-container" style="margin-top:30px;">
-        <h2>Resultado</h2>
-        <p id="resultado-texto">Preencha os campos e clique em Calcular.</p>
-        <p>
-            <a href="/">Voltar ao inicio</a>
-        </p>
-    </div>
-
-    <!-- Nova seção explicativa do valor-p -->
-    <div id="explicacao-valor-p" style="margin-top: 40px; display:none; max-width:600px; background:#f0f4f8; border-left: 6px solid #3178c6; padding: 15px; font-family: Arial, sans-serif; color: #333;">
-        <h3>O que significa "Diferença estatisticamente significativa"?</h3>
-        <p>
-            O <strong>valor-p</strong> é a probabilidade de obter um resultado pelo menos tão extremo quanto o observado, assumindo que não exista diferença real entre os grupos.
-            <br><br> Se o valor-p for menor que 0,05 (5%), dizemos que a diferença é <em>estatisticamente significativa</em>, ou seja, é muito improvável que a diferença observada tenha ocorrido por acaso.
-            <br><br> Caso contrário, não temos evidências suficientes para afirmar que as médias dos dois países são diferentes.
-        </p>
+    <!-- Modal para o Gráfico Z -->
+    <div id="modal-grafico-z" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <img id="grafico-z" src="" alt="Gráfico Z" />
+        </div>
     </div>
 
     <script>
@@ -155,12 +265,12 @@
             const pais1Select = document.getElementById('pais1-select');
             const pais2Select = document.getElementById('pais2-select');
             paises.forEach(p => {
-                const opt1 = document.createElement('option');
+                let opt1 = document.createElement('option');
                 opt1.value = p;
                 opt1.textContent = p;
                 pais1Select.appendChild(opt1);
 
-                const opt2 = document.createElement('option');
+                let opt2 = document.createElement('option');
                 opt2.value = p;
                 opt2.textContent = p;
                 pais2Select.appendChild(opt2);
@@ -169,7 +279,7 @@
             const poluentes = await fetchJSON('/poluentes');
             const poluenteSelect = document.getElementById('poluente-select');
             poluentes.forEach(p => {
-                const opt = document.createElement('option');
+                let opt = document.createElement('option');
                 opt.value = p;
                 opt.textContent = p;
                 poluenteSelect.appendChild(opt);
@@ -183,58 +293,86 @@
             const limite = document.getElementById('limite-teste').value;
 
             const resultadoEl = document.getElementById('resultado-texto');
-            const explicacaoEl = document.getElementById('explicacao-valor-p');
+            const graficoT = document.getElementById('grafico-t');
+            const containerGraficoT = document.getElementById('container-grafico-t');
 
-            if (!pais1 || !pais2 || !poluente) {
-                resultadoEl.textContent = 'Por favor, selecione os dois países e o poluente.';
-                explicacaoEl.style.display = 'none';
-                return;
-            }
-            if (pais1 === pais2) {
-                resultadoEl.textContent = 'Escolha dois países diferentes para comparar.';
-                explicacaoEl.style.display = 'none';
+            if (!pais1 || !pais2 || !poluente || pais1 === pais2) {
+                resultadoEl.textContent = 'Selecione dois países diferentes e um poluente.';
+                graficoT.src = '';
+                containerGraficoT.style.display = 'none';
                 return;
             }
 
             let url = `/teste_t?pais1=${encodeURIComponent(pais1)}&pais2=${encodeURIComponent(pais2)}&poluente=${encodeURIComponent(poluente)}`;
-            if (limite) url += `&limite=${encodeURIComponent(limite)}`;
+            if (limite) url += `&limite=${limite}`;
 
             resultadoEl.textContent = 'Calculando...';
-            explicacaoEl.style.display = 'none';
+            graficoT.src = '';
+            containerGraficoT.style.display = 'none';
 
-            try {
-                const data = await fetchJSON(url);
-
-                if (data.erro) {
-                    resultadoEl.textContent = `Erro: ${data.erro}`;
-                    return;
-                }
-
-                resultadoEl.innerHTML = `
-                    <strong>Teste T entre ${pais1} e ${pais2} para o poluente ${poluente}:</strong><br/>
-                    Estatística t: <strong>${data.t_stat.toFixed(4)}</strong><br/>
-                    Valor-p: <strong>${data.p_valor.toExponential(4)}</strong><br/>
-                    <em>${data.p_valor < 0.05 ? 'Diferença estatisticamente significativa.' : 'Diferença não significativa.'}</em>
-                `;
-
-                // Mostra explicação se valor-p < 0.05
-                if (data.p_valor < 0.05) {
-                    explicacaoEl.style.display = 'block';
-                } else {
-                    explicacaoEl.style.display = 'none';
-                }
-            } catch (error) {
-                resultadoEl.textContent = `Erro na requisição: ${error.message}`;
-                explicacaoEl.style.display = 'none';
+            const data = await fetchJSON(url);
+            if (data.erro) {
+                resultadoEl.textContent = `Erro: ${data.erro}`;
+                return;
             }
+
+            resultadoEl.innerHTML = `
+                <strong>Teste T entre ${pais1} e ${pais2} para o poluente ${poluente}:</strong><br/>
+                Estatística t: <strong>${data.t_stat.toFixed(4)}</strong><br/>
+                Valor-p: <strong>${data.p_valor.toExponential(4)}</strong><br/>
+                <em>${data.p_valor < 0.05 ? 'Diferença estatisticamente significativa.' : 'Diferença não significativa.'}</em><br/>
+                Média ${pais1}: ${data.media_pais1.toFixed(2)} | Média ${pais2}: ${data.media_pais2.toFixed(2)}<br/>
+                n = ${data.n_amostras_pais1} e ${data.n_amostras_pais2}
+            `;
+
+            const timestamp = new Date().getTime();
+            const urlGraficoT = `/grafico_t?pais1=${encodeURIComponent(pais1)}&pais2=${encodeURIComponent(pais2)}&poluente=${encodeURIComponent(poluente)}&_=${timestamp}`;
+
+            graficoT.onload = () => {
+                containerGraficoT.style.display = 'flex';
+            };
+
+            graficoT.src = urlGraficoT;
         }
+
+        const btnGraficoZ = document.getElementById('btn-grafico-z');
+        const modal = document.getElementById('modal-grafico-z');
+        const spanClose = modal.querySelector('.close');
+        const graficoZ = document.getElementById('grafico-z');
+
+        btnGraficoZ.onclick = () => {
+            const pais1 = document.getElementById('pais1-select').value;
+            const pais2 = document.getElementById('pais2-select').value;
+            const poluente = document.getElementById('poluente-select').value;
+
+            if (!pais1 || !pais2 || !poluente || pais1 === pais2) {
+                alert('Selecione dois países diferentes e um poluente antes.');
+                return;
+            }
+
+            const timestamp = new Date().getTime();
+            graficoZ.src = `/grafico_z?pais1=${encodeURIComponent(pais1)}&pais2=${encodeURIComponent(pais2)}&poluente=${encodeURIComponent(poluente)}&_=${timestamp}`;
+
+            modal.style.display = 'block';
+        };
+
+        spanClose.onclick = () => {
+            modal.style.display = 'none';
+            graficoZ.src = '';
+        };
+
+        window.onclick = (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+                graficoZ.src = '';
+            }
+        };
 
         window.onload = () => {
             popularSelects();
             document.getElementById('btn-calcular').addEventListener('click', calcularTesteT);
         };
     </script>
-
 </body>
 
 </html>
