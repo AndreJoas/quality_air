@@ -38,8 +38,10 @@ python app.py
 <img width="1086" height="872" alt="image" src="https://github.com/user-attachments/assets/2f12ef06-948d-4115-bac9-122a76fb4a99" />
 <img width="1000" height="815" alt="image" src="https://github.com/user-attachments/assets/8c413cf4-5ed7-4c1d-a82a-7a4ef186e6f6" />
 <img width="993" height="611" alt="image" src="https://github.com/user-attachments/assets/20e8bc04-c9ff-4c36-a0df-344cc70c5db3" />
+
 # pagina_de_modelos_de_classificação(ANTES DE RODAR OS MODELOS)
 <img width="1918" height="417" alt="image" src="https://github.com/user-attachments/assets/a64aed96-1b2e-4eb9-8a3b-f144512365d1" />
+
 # pagina_de_modelos_de_classificação(DEPOIS DE RODAR OS MODELOS)
 <img width="1881" height="808" alt="image" src="https://github.com/user-attachments/assets/0a7e23ed-b5d0-46d4-87e7-2f42eb4307d8" />
 <img width="1886" height="747" alt="image" src="https://github.com/user-attachments/assets/07427b1d-c807-45a1-a0f2-25702fb69aa1" />
