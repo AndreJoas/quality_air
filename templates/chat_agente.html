@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat com Agente</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .chat-box {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            height: 500px;
+            overflow-y: scroll;
+            margin-bottom: 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .user-msg {
+            text-align: right;
+            color: blue;
+        }
+        .bot-msg {
+            text-align: left;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h2 class="text-center mb-4">🧠 Chat com o Agente de Qualidade do Ar</h2>
+    <div class="chat-box" id="chat-box">
+        <p class="text-muted">Digite uma pergunta sobre os dados de qualidade do ar, como:</p>
+        <p class="text-muted">"Qual a média de PM2.5 em São Paulo?"</p>
+    </div>
+    <form id="chat-form" class="input-group">
+        <input type="text" id="pergunta" name="pergunta" class="form-control" placeholder="Digite sua pergunta..." required>
+        <button class="btn btn-primary" type="submit">Enviar</button>
+    </form>
+</div>
+
+<script>
+    const form = document.getElementById('chat-form');
+    const chatBox = document.getElementById('chat-box');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const pergunta = document.getElementById('pergunta').value;
+
+        // Mostrar pergunta do usuário
+        chatBox.innerHTML += `<p class="user-msg"><strong>Você:</strong> ${pergunta}</p>`;
+        document.getElementById('pergunta').value = '';
+
+        const resposta = await fetch('/processar_pergunta', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ pergunta })
+        });
+        const data = await resposta.json();
+
+        chatBox.innerHTML += `<p class="bot-msg"><strong>Agente:</strong> ${data.resposta}</p>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+</script>
+</body>
+</html>

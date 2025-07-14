@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import io
+import os
 from scipy.stats import norm
 from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
@@ -27,6 +28,22 @@ import optuna
 from flask import flash
 import pycountry_convert as pc
 import pycountry
+
+from llama_index.llms.groq import Groq
+from llama_index.core import Settings
+from llama_index.core.tools import FunctionTool
+from llama_index.core.agent import FunctionCallingAgentWorker, AgentRunner
+from typing import List, Dict
+from llama_index.core.agent.workflow import AgentWorkflow 
+
+os.environ["GROQCLOUD_API_KEY"] = "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"
+
+groq_api_key = os.environ["GROQCLOUD_API_KEY"]
+
+llm = Groq(model="deepseek-r1-distill-llama-70b", api_key=groq_api_key)
+Settings.llm = llm
+
+           # idem
 
 app = Flask(__name__)
 app.secret_key = 's3cr3t_k3y_2231nskldasSD#$!@$%D'  # Chave secreta para sessões Flask
@@ -202,13 +219,149 @@ def classificar_qualidade(poluente, valor):
         return 'Desconhecido'
 
  
-
-# Dados tratados disponíveis globalmente
-df_global = carregar_e_tratar_dados()
+index = 1
+if index == 1:
+    df_global = carregar_e_tratar_dados()
+    index = 0
 
 
 # --- Rotas de frontend ---
 
+
+
+
+
+
+
+# CHAT
+
+# -----------------------------------------------------------
+# 🚀 NOVO – Função que gera o prompt a partir de TODAS as colunas
+# -----------------------------------------------------------
+def extract_keywords_from_question(query_text, df):
+    termos = query_text.lower()
+    pais_encontrado = None
+    cidade_encontrada = None
+    poluente_encontrado = None
+
+    # Busca país
+    for pais in df['Country Label'].dropna().unique():
+        if pais.lower() in termos:
+            pais_encontrado = pais
+            break
+
+    # Busca cidade
+    if not pais_encontrado:
+        for cidade in df['City'].dropna().unique():
+            if cidade.lower() in termos:
+                cidade_encontrada = cidade
+                # Acha país pela cidade
+                pais_cidade = df[df['City'] == cidade]['Country Label'].iloc[0]
+                pais_encontrado = pais_cidade
+                break
+
+    # Busca poluente
+    for poluente in df['Pollutant'].dropna().unique():
+        if poluente.lower() in termos:
+            poluente_encontrado = poluente
+            break
+
+    return pais_encontrado, cidade_encontrada, poluente_encontrado
+
+def generate_prompt_for_agent_filtered(query_text, df):
+    print(f"Gerando prompt para a consulta: {query_text}")
+
+    colunas_exibidas = ['Country Label', 'City', 'Pollutant', 'Unit', 'Value', 'Last Updated', 'Coordinates']
+    if not set(colunas_exibidas).issubset(df.columns):
+        colunas_exibidas = df.columns.tolist()
+
+    pais, cidade, poluente = extract_keywords_from_question(query_text, df)
+
+    df_filtrado = df.copy()
+    if pais:
+        df_filtrado = df_filtrado[df_filtrado['Country Label'] == pais]
+
+    if cidade:
+        df_filtrado = df_filtrado[df_filtrado['City'] == cidade]
+
+    if poluente:
+        df_filtrado = df_filtrado[df_filtrado['Pollutant'] == poluente]
+
+    # Caso não tenha filtro (muito geral), limita o tamanho para evitar token overflow
+    if df_filtrado.empty:
+        df_filtrado = df
+    if len(df_filtrado) > 200:
+        df_filtrado = df_filtrado.sample(200, random_state=42)  # amostra para limitar
+
+    registros = df_filtrado[colunas_exibidas].dropna().to_dict(orient='records')
+
+    prompt = f"""
+Você é um especialista em qualidade do ar e tem acesso aos dados abaixo extraídos da base mundial de qualidade do ar.
+Responda à pergunta a seguir **usando apenas os dados fornecidos**. Seja claro, objetivo e **não invente dados**.
+
+📌 **Pergunta do usuário:** {query_text}
+
+📊 **Dados disponíveis**:
+"""
+
+    for reg in registros:
+        linha = ', '.join(f"{col}: {valor}" for col, valor in reg.items())
+        prompt += f"- {linha}\n"
+
+    prompt += """
+📎 Instruções para resposta:
+- Responda sempre em português.
+- Utilize apenas os dados apresentados.
+- Se não houver dados suficientes para responder, diga claramente que a informação não está disponível.
+- Não crie conclusões além do que está na base.
+"""
+
+    print("✅ Prompt gerado com sucesso.")
+    return prompt
+
+def process_query_with_agent_Complete_resposta(query_text, df):
+    print("🔍 Processando consulta com o agente...")
+
+    prompt = generate_prompt_for_agent_filtered(query_text, df)
+
+    tool = FunctionTool.from_defaults(fn=generate_prompt_for_agent_filtered, name="Gerar Resposta",
+                                      description="Responde perguntas com base na base mundial de qualidade do ar.")
+    agent_worker = FunctionCallingAgentWorker.from_tools(tools=[tool], verbose=False)
+    agent = AgentRunner(agent_worker)
+
+    print("🤖 Enviando prompt ao agente...")
+    response = agent.chat(prompt)
+
+    print("✅ Resposta recebida:")
+    print(response.response)
+
+    if isinstance(response.response, str):
+        print("Resposta do agente (final):", response.response.strip())
+        return response.response.strip()
+
+
+# -----------------------------------------------------------
+# 🚀 NOVO – Rotas do chat
+# -----------------------------------------------------------
+
+@app.route('/chat_agente')
+def chat_agente():
+    return render_template('chat_agente.html')
+
+# Flask route de exemplo para processar pergunta
+@app.route('/processar_pergunta', methods=['POST'])
+def processar_pergunta():
+    data = request.get_json()
+    pergunta = data.get('pergunta', '')
+
+    resposta_agente = process_query_with_agent_Complete_resposta(pergunta, df_global)
+
+    print("✅ Enviando ao front-end:", resposta_agente)
+    return jsonify({'resposta': resposta_agente})
+
+
+
+# ----------------
 
 @app.route('/')
 def index():
